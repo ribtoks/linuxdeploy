@@ -47,6 +47,8 @@ func (ad *AppDeployer) DeployApp(exePath string) {
 
 func (ad *AppDeployer) processLibs() {
   for libpath := range ad.libsChannel {
+    log.Printf("---- Investigating %v ----", libpath)
+
     if _, ok := ad.processedLibs[libpath]; !ok {
       dependencies, err := ad.findLddDependencies(libpath)
 
@@ -106,6 +108,8 @@ func (ad *AppDeployer) findLddDependencies(filepath string) ([]string, error) {
       log.Printf("Cannot parse ldd line: %v", line)
     }
   }
+
+  log.Printf("Dependencies found: %v", dependencies)
 
   return dependencies, nil
 }
