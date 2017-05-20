@@ -91,11 +91,11 @@ func parseLddOutputLine(line string) (string, error) {
     shortpath := strings.TrimSpace(parts[0])
 
     if parts[1] == "not found" { return parts[0], nil }
-    if len(strings.TrimSpace(parts[1])) == 0 { return "", errors.New("vdso") }
 
     lastUseful := strings.LastIndex(parts[1], "(0x")
     if lastUseful != -1 {
       libpath = strings.TrimSpace(parts[1][:lastUseful])
+      if len(libpath) == 0 { return "", errors.New("vdso") }
     } else {
       libpath = shortpath
     }
