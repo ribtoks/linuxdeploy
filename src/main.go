@@ -70,8 +70,8 @@ func main() {
 
   appDeployer := &AppDeployer{
     processedLibs: make(map[string]bool),
-    libsChannel: make(chan *DependencyRequest),
-    copyChannel: make(chan *CopyRequest),
+    libsChannel: make(chan *DeployRequest),
+    copyChannel: make(chan *DeployRequest),
     rpathChannel: make(chan string),
     qtChannel: make(chan string),
 

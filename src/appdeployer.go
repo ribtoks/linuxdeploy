@@ -9,24 +9,27 @@ import (
   "path/filepath"
 )
 
-type CopyRequest struct {
-  sourceRoot string // if empty then sourcePath is absolute path
+type DeployRequest struct {
   sourcePath string
+  sourceRoot string // if empty then sourcePath is absolute path
   targetRoot string
   isAppDependency bool
 }
 
-type DependencyRequest struct {
-  sourcePath string
-  isAppDependency bool
+func (dp *DeployRequest) FullPath() string {
+  if len(dp.sourceRoot) == 0 {
+    return dp.sourcePath
+  } else {
+    return filepath.Join(dp.sourceRoot, dp.sourcePath)
+  }
 }
 
 type AppDeployer struct {
   waitGroup sync.WaitGroup
   processedLibs map[string]bool
 
-  libsChannel chan *DependencyRequest
-  copyChannel chan *CopyRequest
+  libsChannel chan *DeployRequest
+  copyChannel chan *DeployRequest
   stripChannel chan string
   rpathChannel chan string
   qtChannel chan string
@@ -56,7 +59,7 @@ func (ad *AppDeployer) processMainExe() {
 
     ad.waitGroup.Add(1)
     go func() {
-      ad.copyChannel <- &CopyRequest{
+      ad.copyChannel <- &DeployRequest{
         sourcePath: ad.targetExePath,
         targetRoot: ".",
         isAppDependency: true,
@@ -67,8 +70,9 @@ func (ad *AppDeployer) processMainExe() {
       if _, ok := ad.processedLibs[dependPath]; !ok {
         ad.waitGroup.Add(1)
         go func(dlp string) {
-          ad.libsChannel <- &DependencyRequest {
+          ad.libsChannel <- &DeployRequest {
             sourcePath: dlp,
+            targetRoot: "lib",
             isAppDependency: true,
           }
         }(dependPath)
@@ -87,7 +91,7 @@ func (ad *AppDeployer) processMainExe() {
 
 func (ad *AppDeployer) processLibs() {
   for request := range ad.libsChannel {
-    libpath := request.sourcePath
+    libpath := request.FullPath()
 
     if _, ok := ad.processedLibs[libpath]; !ok {
       dependencies, err := ad.findLddDependencies(libpath)
@@ -95,20 +99,22 @@ func (ad *AppDeployer) processLibs() {
         ad.processedLibs[libpath] = true
 
         ad.waitGroup.Add(1)
-        go func(libtocopy string, isAppDependency bool) {
-          ad.copyChannel <- &CopyRequest{
-            sourcePath: libtocopy,
-            targetRoot: "lib",
+        go func(sourcePath, sourceRoot, targetRoot string, isAppDependency bool) {
+          ad.copyChannel <- &DeployRequest{
+            sourceRoot: sourceRoot,
+            sourcePath: sourcePath,
+            targetRoot: targetRoot,
             isAppDependency: isAppDependency,
           }
-        }(libpath, request.isAppDependency)
+        }(request.sourcePath, request.sourceRoot, request.targetRoot, request.isAppDependency)
 
         for _, dependPath := range dependencies {
           if _, ok := ad.processedLibs[dependPath]; !ok {
             ad.waitGroup.Add(1)
             go func(dlp string, isAppDependency bool) {
-              ad.libsChannel <- &DependencyRequest {
+              ad.libsChannel <- &DeployRequest {
                 sourcePath: dlp,
+                targetRoot: "lib",
                 isAppDependency: isAppDependency,
               }
             }(dependPath, request.isAppDependency)
@@ -126,17 +132,16 @@ func (ad *AppDeployer) processLibs() {
 func (ad *AppDeployer) processCopyRequests() {
   for copyRequest := range ad.copyChannel {
 
-    var sourcePath, destinationPath, destinationPrefix string
+    var destinationPath, destinationPrefix string
 
     if len(copyRequest.sourceRoot) == 0 {
       // absolute path
       destinationPrefix = copyRequest.targetRoot
-      sourcePath = copyRequest.sourcePath
     } else {
       destinationPrefix = filepath.Join(copyRequest.targetRoot, copyRequest.sourcePath)
-      sourcePath = filepath.Join(copyRequest.sourceRoot, copyRequest.sourcePath)
     }
 
+    sourcePath := copyRequest.FullPath()
     destinationPath = filepath.Join(ad.destinationPath, destinationPrefix, filepath.Base(copyRequest.sourcePath))
 
     ensureDirExists(destinationPath)
@@ -219,4 +224,70 @@ func (ad *AppDeployer) resolveLibrary(libname string) (foundPath string) {
 
   log.Printf("Resolving library %v to %v", libname, foundPath)
   return foundPath
+}
+
+func (ad *AppDeployer) copyRecursively(rootpath string, targetRoot string) error {
+  err := filepath.Walk(rootpath, func(path string, info os.FileInfo, err error) error {
+    if err != nil {
+      return err
+    }
+
+    if !info.Mode().IsRegular() {
+      return nil
+    }
+
+    go func() {
+      relativePath, err := filepath.Rel(rootpath, path)
+      if err != nil {
+        log.Println(err)
+      }
+
+      ad.copyChannel <- &DeployRequest{
+        sourceRoot: rootpath,
+        sourcePath: relativePath,
+        targetRoot: targetRoot,
+        isAppDependency: false,
+      }
+    }()
+
+    return nil
+  })
+
+  return err
+}
+
+// designed to copy Qt plugins or other libraries
+func (ad *AppDeployer) deployRecursively(rootpath string, targetRoot string) error {
+  err := filepath.Walk(rootpath, func(path string, info os.FileInfo, err error) error {
+    if err != nil {
+      return err
+    }
+
+    if !info.Mode().IsRegular() {
+      return nil
+    }
+
+    // copy only libraries
+    basename := filepath.Base(path)
+    if !strings.Contains(basename, ".so") {
+      return nil
+    }
+
+    go func() {
+      relativePath, err := filepath.Rel(rootpath, path)
+      if err != nil {
+        log.Println(err)
+      }
+
+      ad.libsChannel <- &DeployRequest {
+        sourceRoot: rootpath,
+        sourcePath: relativePath,
+        isAppDependency: true,
+      }
+    }()
+
+    return nil
+  })
+
+  return err
 }
