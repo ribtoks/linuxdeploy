@@ -27,10 +27,10 @@ type AppDeployer struct {
 }
 
 func (ad *AppDeployer) DeployApp(exePath string) {
-  ad.processLibs()
+  ad.processLibs(exePath)
 }
 
-func (ad *AppDeployer) processLibs() {
+func (ad *AppDeployer) processLibs(exePath string) {
   var wg sync.WaitGroup
 
   wg.Add(1)
@@ -53,9 +53,9 @@ func (ad *AppDeployer) processLibs() {
         } else {
           log.Println(err)
         }
-
-        wg.Done()
       }
+
+      wg.Done()
     }
   }()
 
@@ -69,7 +69,7 @@ func findLddDependencies(filepath string) ([]string, error) {
   out, err := exec.Command("ldd", filepath).Output()
   if err != nil { return nil, err }
 
-  dependencies := make([]string, 10)
+  dependencies := make([]string, 0, 10)
 
   output := string(out)
   lines := strings.Split(output, "\n")
@@ -78,7 +78,7 @@ func findLddDependencies(filepath string) ([]string, error) {
     libpath, err := parseLddOutputLine(line)
 
     if err == nil {
-      log.Printf("Found dependency %v", libpath)
+      log.Printf("Found dependency %v for line [%v]", libpath, line)
       dependencies = append(dependencies, libpath)
     } else {
       log.Printf("Cannot parse ldd line: %v", line)
@@ -113,6 +113,7 @@ func parseLddOutputLine(line string) (string, error) {
     }
   } else {
     log.Printf("Skipping ldd line: %v", line)
+    return "", errors.New("Not with =>")
   }
 
   return libpath, nil
