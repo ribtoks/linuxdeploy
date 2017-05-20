@@ -2,6 +2,7 @@ package main
 
 import (
   "log"
+  "errors"
   "os/exec"
   "strings"
 )
@@ -61,45 +62,46 @@ func findLddDependencies(filepath string) ([]string, error) {
   output := string(out)
   lines := strings.Split(output, "\n")
   for _, line := range lines {
-    if len(line) == 0 { continue }
+    line = strings.TrimSpace(line)
+    libpath, err := parseLddOutputLine(line)
 
-    var libpath string
-
-    if strings.Contains(line, " => ") {
-      parts := strings.Split(line, " => ")
-
-      if len(parts) != 2 {
-        log.Printf("Unexpected ldd output: %v", line)
-        continue
-      }
-
-      shortpath := strings.TrimSpace(parts[0])
-
-      lastUseful := strings.LastIndex(parts[1], "(0x")
-      if lastUseful != -1 {
-        libpath = strings.TrimSpace(parts[1][:lastUseful])
-      } else {
-        log.Printf("Cannot find libpath in line %v", line)
-        libpath = shortpath
-      }
-    } else if strings.Contains(line, "not found") {
-      trimmed := strings.TrimSpace(line)
-      parts := strings.Split(trimmed, " ")
-
-      if len(parts) > 0 {
-        libpath = parts[0]
-      } else {
-        log.Printf("Unexpected ldd output: %v", line)
-        continue
-      }
+    if err != nil {
+      log.Printf("Found dependency %v", libpath)
+      dependencies = append(dependencies, libpath)
     } else {
-      log.Printf("Skipping ldd line: %v", line)
-      continue
+      log.Printf("Cannot parse ldd line: %v", line)
     }
-
-    log.Printf("Found dependency %v", libpath)
-    dependencies = append(dependencies, libpath)
   }
 
   return dependencies, nil
+}
+
+func parseLddOutputLine(line string) (string, error) {
+  if len(line) == 0 { return "", errors.New("Empty") }
+
+  var libpath string
+
+  if strings.Contains(line, " => ") {
+    parts := strings.Split(line, " => ")
+
+    if len(parts) != 2 {
+      return "", errors.New("Wrong format")
+    }
+
+    shortpath := strings.TrimSpace(parts[0])
+
+    if parts[1] == "not found" { return parts[0], nil }
+    if len(strings.TrimSpace(parts[1])) == 0 { return "", errors.New("vdso") }
+
+    lastUseful := strings.LastIndex(parts[1], "(0x")
+    if lastUseful != -1 {
+      libpath = strings.TrimSpace(parts[1][:lastUseful])
+    } else {
+      libpath = shortpath
+    }
+  } else {
+    log.Printf("Skipping ldd line: %v", line)
+  }
+
+  return libpath, nil
 }
