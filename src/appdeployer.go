@@ -2,7 +2,6 @@ package main
 
 import (
   "log"
-  "errors"
   "os"
   "os/exec"
   "strings"
@@ -11,16 +10,23 @@ import (
 )
 
 type CopyRequest struct {
-  relativeTarget string
-  originPath string
+  sourceRoot string // if empty then sourcePath is absolute path
+  sourcePath string
+  targetRoot string
+  isAppDependency bool
+}
+
+type DependencyRequest struct {
+  sourcePath string
+  isAppDependency bool
 }
 
 type AppDeployer struct {
   waitGroup sync.WaitGroup
   processedLibs map[string]bool
 
-  libsChannel chan string
-  copyChannel chan string
+  libsChannel chan *DependencyRequest
+  copyChannel chan *CopyRequest
   stripChannel chan string
   rpathChannel chan string
   qtChannel chan string
@@ -30,12 +36,10 @@ type AppDeployer struct {
   targetExePath string
 }
 
-func (ad *AppDeployer) DeployApp(exePath string) {
+func (ad *AppDeployer) DeployApp() {
   ad.waitGroup.Add(1)
-  go func() { ad.libsChannel <- exePath }()
 
-  os.MkdirAll(filepath.Join(ad.destinationPath, "lib"), os.ModePerm)
-  go ad.processLibs()
+  go ad.processMainExe()
   go ad.processCopyRequests()
 
   log.Printf("Waiting for processing to finish")
@@ -45,23 +49,69 @@ func (ad *AppDeployer) DeployApp(exePath string) {
   close(ad.copyChannel)
 }
 
+func (ad *AppDeployer) processMainExe() {
+  dependencies, err := ad.findLddDependencies(ad.targetExePath)
+  if (err == nil) {
+    ad.processedLibs[ad.targetExePath] = true
+
+    ad.waitGroup.Add(1)
+    go func() {
+      ad.copyChannel <- &CopyRequest{
+        sourcePath: ad.targetExePath,
+        targetRoot: ".",
+        isAppDependency: true,
+      }
+    }()
+
+    for _, dependPath := range dependencies {
+      if _, ok := ad.processedLibs[dependPath]; !ok {
+        ad.waitGroup.Add(1)
+        go func(dlp string) {
+          ad.libsChannel <- &DependencyRequest {
+            sourcePath: dlp,
+            isAppDependency: true,
+          }
+        }(dependPath)
+      } else {
+        log.Printf("Dependency seems to be processed: %v", dependPath)
+      }
+    }
+  } else {
+    log.Fatal(err)
+  }
+
+  go ad.processLibs()
+
+  ad.waitGroup.Done()
+}
+
 func (ad *AppDeployer) processLibs() {
-  for libpath := range ad.libsChannel {
-    log.Printf("---- Investigating %v ----", libpath)
+  for request := range ad.libsChannel {
+    libpath := request.sourcePath
 
     if _, ok := ad.processedLibs[libpath]; !ok {
       dependencies, err := ad.findLddDependencies(libpath)
-
-      ad.processedLibs[libpath] = true
-
       if (err == nil) {
+        ad.processedLibs[libpath] = true
+
         ad.waitGroup.Add(1)
-        go func(libtocopy string) { ad.copyChannel <- libtocopy }(libpath)
+        go func(libtocopy string, isAppDependency bool) {
+          ad.copyChannel <- &CopyRequest{
+            sourcePath: libtocopy,
+            targetRoot: "lib",
+            isAppDependency: isAppDependency,
+          }
+        }(libpath, request.isAppDependency)
 
         for _, dependPath := range dependencies {
           if _, ok := ad.processedLibs[dependPath]; !ok {
             ad.waitGroup.Add(1)
-            go func() { ad.libsChannel <- dependPath }()
+            go func(dlp string, isAppDependency bool) {
+              ad.libsChannel <- &DependencyRequest {
+                sourcePath: dlp,
+                isAppDependency: isAppDependency,
+              }
+            }(dependPath, request.isAppDependency)
           }
         }
       } else {
@@ -74,10 +124,27 @@ func (ad *AppDeployer) processLibs() {
 }
 
 func (ad *AppDeployer) processCopyRequests() {
-  for fileToCopy := range ad.copyChannel {
-    destination := filepath.Join(ad.destinationPath, filepath.Base(fileToCopy))
-    log.Printf("Copying %v to %v", fileToCopy, destination)
-    copyFile(fileToCopy, destination)
+  for copyRequest := range ad.copyChannel {
+
+    var sourcePath, destinationPath, destinationPrefix string
+
+    if len(copyRequest.sourceRoot) == 0 {
+      // absolute path
+      destinationPrefix = copyRequest.targetRoot
+      sourcePath = copyRequest.sourcePath
+    } else {
+      destinationPrefix = filepath.Join(copyRequest.targetRoot, copyRequest.sourcePath)
+      sourcePath = filepath.Join(copyRequest.sourceRoot, copyRequest.sourcePath)
+    }
+
+    destinationPath = filepath.Join(ad.destinationPath, destinationPrefix, filepath.Base(copyRequest.sourcePath))
+
+    ensureDirExists(destinationPath)
+
+    log.Printf("Copying %v to %v", sourcePath, destinationPath)
+    copyFile(sourcePath, destinationPath)
+
+    // TODO: submit to strip/patchelf/etc. if copyRequest.isAppDependency
 
     ad.waitGroup.Done()
   }
@@ -102,14 +169,12 @@ func (ad *AppDeployer) findLddDependencies(filepath string) ([]string, error) {
         libpath = ad.resolveLibrary(libname)
       }
 
-      log.Printf("Found dependency %v for line [%v]", libpath, line)
+      log.Printf("Extracted %v from ldd [%v]", libpath, line)
       dependencies = append(dependencies, libpath)
     } else {
       log.Printf("Cannot parse ldd line: %v", line)
     }
   }
-
-  log.Printf("Dependencies found: %v", dependencies)
 
   return dependencies, nil
 }
@@ -154,32 +219,4 @@ func (ad *AppDeployer) resolveLibrary(libname string) (foundPath string) {
 
   log.Printf("Resolving library %v to %v", libname, foundPath)
   return foundPath
-}
-
-func parseLddOutputLine(line string) (string, string, error) {
-  if len(line) == 0 { return "", "", errors.New("Empty") }
-
-  var libpath, libname string
-
-  if strings.Contains(line, " => ") {
-    parts := strings.Split(line, " => ")
-
-    if len(parts) != 2 {
-      return "", "", errors.New("Wrong format")
-    }
-
-    libname = strings.TrimSpace(parts[0])
-
-    if parts[1] == "not found" { return parts[0], "", nil }
-
-    lastUseful := strings.LastIndex(parts[1], "(0x")
-    if lastUseful != -1 {
-      libpath = strings.TrimSpace(parts[1][:lastUseful])
-    }
-  } else {
-    log.Printf("Skipping ldd line: %v", line)
-    return "", "", errors.New("Not with =>")
-  }
-
-  return libname, libpath, nil
 }

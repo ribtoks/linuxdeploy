@@ -70,21 +70,21 @@ func main() {
 
   appDeployer := &AppDeployer{
     processedLibs: make(map[string]bool),
-    libsChannel: make(chan string),
-    copyChannel: make(chan string),
+    libsChannel: make(chan *DependencyRequest),
+    copyChannel: make(chan *CopyRequest),
     rpathChannel: make(chan string),
     qtChannel: make(chan string),
 
     additionalLibPaths: make([]string, 0, 10),
     destinationPath: appDirPath,
-    targetExePath: *exePathFlag,
+    targetExePath: resolveTargetExe(),
   }
 
   for _, libpath := range librariesDirs {
     appDeployer.addAdditionalLibPath(libpath)
   }
 
-  appDeployer.DeployApp(*exePathFlag)
+  appDeployer.DeployApp()
 }
 
 func parseFlags() error {
@@ -134,6 +134,19 @@ func resolveAppDir() string {
   if !filepath.IsAbs(foundPath) {
     if foundPath, err = filepath.Abs(foundPath); err != nil {
       foundPath = *appDirPathFlag
+    }
+  }
+
+  return foundPath
+}
+
+func resolveTargetExe() string {
+  foundPath := *exePathFlag
+  var err error
+
+  if !filepath.IsAbs(foundPath) {
+    if foundPath, err = filepath.Abs(foundPath); err != nil {
+      foundPath = *exePathFlag
     }
   }
 
