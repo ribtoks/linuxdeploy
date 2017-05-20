@@ -7,6 +7,7 @@ import (
   "os"
   "io"
   "errors"
+  "path/filepath"
 )
 
 type stringsParam []string
@@ -62,9 +63,10 @@ func main() {
   currentExeFullPath = executablePath()
   log.Println("Current exe path is", currentExeFullPath)
 
-  os.RemoveAll(*appDirPathFlag)
-  os.MkdirAll(*appDirPathFlag, os.ModePerm)
-  log.Printf("Created directory %v", *appDirPathFlag)
+  appDirPath := resolveAppDir()
+  os.RemoveAll(appDirPath)
+  os.MkdirAll(appDirPath, os.ModePerm)
+  log.Printf("Created directory %v", appDirPath)
 
   appDeployer := &AppDeployer{
     processedLibs: make(map[string]bool),
@@ -74,6 +76,7 @@ func main() {
     qtChannel: make(chan string),
 
     additionalLibPaths: make([]string, 0, 10),
+    destinationPath: appDirPath,
   }
 
   for _, libpath := range librariesDirs {
@@ -121,4 +124,17 @@ func setupLogging() (f *os.File, err error) {
   log.Println(appName + " log started")
 
   return f, err
+}
+
+func resolveAppDir() string {
+  foundPath := *appDirPathFlag
+  var err error
+
+  if !filepath.IsAbs(foundPath) {
+    if foundPath, err = filepath.Abs(foundPath); err != nil {
+      foundPath = *appDirPathFlag
+    }
+  }
+
+  return foundPath
 }

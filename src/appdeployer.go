@@ -10,6 +10,11 @@ import (
   "path/filepath"
 )
 
+type CopyRequest struct {
+  relativeTarget string
+  originPath string
+}
+
 type AppDeployer struct {
   waitGroup sync.WaitGroup
   processedLibs map[string]bool
@@ -28,10 +33,10 @@ type AppDeployer struct {
 func (ad *AppDeployer) DeployApp(exePath string) {
   ad.waitGroup.Add(1)
   go func() { ad.libsChannel <- exePath }()
-  go ad.processLibs()
 
   ensureDirExists(filepath.Join(ad.destinationPath, "lib"))
   go ad.processCopyRequests()
+  go ad.processLibs()
 
   ad.waitGroup.Wait()
   close(ad.libsChannel)
@@ -108,7 +113,7 @@ func (ad *AppDeployer) addAdditionalLibPath(libpath string) {
   var err error
 
   if !filepath.IsAbs(foundPath) {
-    if foundPath, err = filepath.Abs(libpath); err == nil {
+    if foundPath, err = filepath.Abs(foundPath); err == nil {
       log.Printf("Trying to resolve libpath to: %v", foundPath)
 
       if _, err = os.Stat(foundPath); os.IsNotExist(err) {
