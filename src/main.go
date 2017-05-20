@@ -65,7 +65,7 @@ func main() {
 
   appDirPath := resolveAppDir()
   os.RemoveAll(appDirPath)
-  os.MkdirAll(appDirPath, os.ModePerm)
+  os.MkdirAll(appDirPath, os.ModeDir)
   log.Printf("Created directory %v", appDirPath)
 
   appDeployer := &AppDeployer{

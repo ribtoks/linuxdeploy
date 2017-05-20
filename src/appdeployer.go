@@ -34,24 +34,28 @@ func (ad *AppDeployer) DeployApp(exePath string) {
   ad.waitGroup.Add(1)
   go func() { ad.libsChannel <- exePath }()
 
-  ensureDirExists(filepath.Join(ad.destinationPath, "lib"))
-  go ad.processCopyRequests()
+  os.MkdirAll(filepath.Join(ad.destinationPath, "lib"), os.ModeDir)
   go ad.processLibs()
+  go ad.processCopyRequests()
 
+  log.Printf("Waiting for processing to finish")
   ad.waitGroup.Wait()
   close(ad.libsChannel)
   close(ad.copyChannel)
 }
 
 func (ad *AppDeployer) processLibs() {
-  for filepath := range ad.libsChannel {
-    if _, ok := ad.processedLibs[filepath]; !ok {
-      dependencies, err := ad.findLddDependencies(filepath)
+  for libpath := range ad.libsChannel {
+    if _, ok := ad.processedLibs[libpath]; !ok {
+      dependencies, err := ad.findLddDependencies(libpath)
       if (err == nil) {
-        ad.processedLibs[filepath] = true
+        ad.processedLibs[libpath] = true
 
         ad.waitGroup.Add(1)
-        go func() { ad.copyChannel <- filepath }()
+        go func() {
+          log.Printf("Submiting copy request %v", libpath)
+          ad.copyChannel <- libpath
+        }()
 
         for _, dependPath := range dependencies {
           if _, ok := ad.processedLibs[dependPath]; !ok {
