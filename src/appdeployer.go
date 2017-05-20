@@ -5,6 +5,7 @@ import (
   "errors"
   "os/exec"
   "strings"
+  "sync"
 )
 
 type DependencyItem struct {
@@ -26,29 +27,40 @@ type AppDeployer struct {
 }
 
 func (ad *AppDeployer) DeployApp(exePath string) {
-  go func() { ad.libsChannel <- exePath }()
   ad.processLibs()
 }
 
 func (ad *AppDeployer) processLibs() {
-  for filepath := range ad.libsChannel {
-    if _, ok := ad.processedLibs[filepath]; !ok {
-      dependencies, err := findLddDependencies(filepath)
-      if (err != nil) {
-        log.Println(err)
-        continue
-      }
+  var wg sync.WaitGroup
 
-      ad.processedLibs[filepath] = true
-      //go func() { ad.copyChannel <- &{DependencyItem{originalPath: filepath} }()
+  wg.Add(1)
+  go func() { ad.libsChannel <- exePath }()
 
-      for _, dependPath := range dependencies {
-        if _, ok := ad.processedLibs[dependPath]; !ok {
-          go func() { ad.libsChannel <- dependPath }()
+  go func() {
+    for filepath := range ad.libsChannel {
+      if _, ok := ad.processedLibs[filepath]; !ok {
+        dependencies, err := findLddDependencies(filepath)
+        if (err == nil) {
+          ad.processedLibs[filepath] = true
+          //go func() { ad.copyChannel <- &{DependencyItem{originalPath: filepath} }()
+
+          for _, dependPath := range dependencies {
+            if _, ok := ad.processedLibs[dependPath]; !ok {
+              wg.Add(1)
+              go func() { ad.libsChannel <- dependPath }()
+            }
+          }
+        } else {
+          log.Println(err)
         }
+
+        wg.Done()
       }
     }
-  }
+  }()
+
+  wg.Wait()
+  close(ad.libsChannel)
 }
 
 func findLddDependencies(filepath string) ([]string, error) {
@@ -66,7 +78,7 @@ func findLddDependencies(filepath string) ([]string, error) {
     libpath, err := parseLddOutputLine(line)
 
     if err == nil {
-      log.Printf("Found dependency %v for line [%v]", libpath, line)
+      log.Printf("Found dependency %v", libpath)
       dependencies = append(dependencies, libpath)
     } else {
       log.Printf("Cannot parse ldd line: %v", line)
