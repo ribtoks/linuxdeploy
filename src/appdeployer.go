@@ -25,8 +25,8 @@ type AppDeployer struct {
 }
 
 func (ad *AppDeployer) DeployApp(exePath string) {
-  go ad.processLibs()
-  ad.libsChannel <- exePath
+  go func() { ad.libsChannel <- exePath }()
+  ad.processLibs()
 }
 
 func (ad *AppDeployer) processLibs() {
