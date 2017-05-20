@@ -90,7 +90,7 @@ func parseFlags() error {
   log.Printf("AppDir is %v", *appDirPathFlag)
 
   appDirInfo, err := os.Stat(*appDirPathFlag)
-  if appDirInfo.IsDir() {
+  if err == nil && appDirInfo.IsDir() {
     if !(*overwriteFlag) {
       return errors.New("AppDir already exists. Please set overwrite flag to overwrite it")
     }
