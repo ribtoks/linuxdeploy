@@ -69,11 +69,15 @@ func main() {
   appDeployer := &AppDeployer{
     processedLibs: make(map[string]bool),
     libsChannel: make(chan string),
-    copyChannel: make(chan DependencyItem),
+    copyChannel: make(chan string),
     rpathChannel: make(chan string),
     qtChannel: make(chan string),
 
-    additionalLibPaths: make([]string, 10),
+    additionalLibPaths: make([]string, 0, 10),
+  }
+
+  for _, libpath := range librariesDirs {
+    appDeployer.addAdditionalLibPath(libpath)
   }
 
   appDeployer.DeployApp(*exePathFlag)
