@@ -34,12 +34,13 @@ func (ad *AppDeployer) DeployApp(exePath string) {
   ad.waitGroup.Add(1)
   go func() { ad.libsChannel <- exePath }()
 
-  os.MkdirAll(filepath.Join(ad.destinationPath, "lib"), os.ModeDir)
+  os.MkdirAll(filepath.Join(ad.destinationPath, "lib"), os.ModePerm)
   go ad.processLibs()
   go ad.processCopyRequests()
 
   log.Printf("Waiting for processing to finish")
   ad.waitGroup.Wait()
+  log.Printf("Processing has finished")
   close(ad.libsChannel)
   close(ad.copyChannel)
 }
@@ -48,14 +49,12 @@ func (ad *AppDeployer) processLibs() {
   for libpath := range ad.libsChannel {
     if _, ok := ad.processedLibs[libpath]; !ok {
       dependencies, err := ad.findLddDependencies(libpath)
-      if (err == nil) {
-        ad.processedLibs[libpath] = true
 
+      ad.processedLibs[libpath] = true
+
+      if (err == nil) {
         ad.waitGroup.Add(1)
-        go func() {
-          log.Printf("Submiting copy request %v", libpath)
-          ad.copyChannel <- libpath
-        }()
+        go func(libtocopy string) { ad.copyChannel <- libtocopy }(libpath)
 
         for _, dependPath := range dependencies {
           if _, ok := ad.processedLibs[dependPath]; !ok {
@@ -64,7 +63,7 @@ func (ad *AppDeployer) processLibs() {
           }
         }
       } else {
-        log.Println(err)
+        log.Printf("Error while dependency check: %v", err)
       }
     }
 

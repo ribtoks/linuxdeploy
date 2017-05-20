@@ -65,7 +65,7 @@ func main() {
 
   appDirPath := resolveAppDir()
   os.RemoveAll(appDirPath)
-  os.MkdirAll(appDirPath, os.ModeDir)
+  os.MkdirAll(appDirPath, os.ModePerm)
   log.Printf("Created directory %v", appDirPath)
 
   appDeployer := &AppDeployer{
@@ -77,6 +77,7 @@ func main() {
 
     additionalLibPaths: make([]string, 0, 10),
     destinationPath: appDirPath,
+    targetExePath: *exePathFlag,
   }
 
   for _, libpath := range librariesDirs {
