@@ -64,6 +64,7 @@ func main() {
 
   os.RemoveAll(*appDirPathFlag)
   os.MkdirAll(*appDirPathFlag, os.ModePerm)
+  log.Printf("Created directory %v", *appDirPathFlag)
 
   appDeployer := &AppDeployer{
     processedLibs: make(map[string]bool),
@@ -85,6 +86,8 @@ func parseFlags() error {
   if os.IsNotExist((err)) { return err }
 
   if len(*outTypeFlag) > 0 && (*outTypeFlag != "appimage") { return errors.New(appName + " only supports appimage type at this time") }
+
+  log.Printf("AppDir is %v", *appDirPathFlag)
 
   appDirInfo, err := os.Stat(*appDirPathFlag)
   if appDirInfo.IsDir() {
