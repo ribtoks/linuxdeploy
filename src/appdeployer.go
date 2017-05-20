@@ -65,7 +65,7 @@ func findLddDependencies(filepath string) ([]string, error) {
     line = strings.TrimSpace(line)
     libpath, err := parseLddOutputLine(line)
 
-    if err != nil {
+    if err == nil {
       log.Printf("Found dependency %v", libpath)
       dependencies = append(dependencies, libpath)
     } else {
