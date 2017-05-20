@@ -30,9 +30,12 @@ func (ad *AppDeployer) DeployApp(exePath string) {
   go func() { ad.libsChannel <- exePath }()
   go ad.processLibs()
 
+  ensureDirExists(filepath.Join(ad.destinationPath, "lib"))
+  go ad.processCopyRequests()
 
   ad.waitGroup.Wait()
   close(ad.libsChannel)
+  close(ad.copyChannel)
 }
 
 func (ad *AppDeployer) processLibs() {
@@ -61,9 +64,13 @@ func (ad *AppDeployer) processLibs() {
 }
 
 func (ad *AppDeployer) processCopyRequests() {
-  // for _ := range ad.copyChannel {
-  //   ad.waitGroup.Done()
-  // }
+  for fileToCopy := range ad.copyChannel {
+    destination := filepath.Join(ad.destinationPath, filepath.Base(fileToCopy))
+    log.Printf("Copying %v to %v", fileToCopy, destination)
+    copyFile(fileToCopy, destination)
+
+    ad.waitGroup.Done()
+  }
 }
 
 func (ad *AppDeployer) findLddDependencies(filepath string) ([]string, error) {
