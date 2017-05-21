@@ -4,7 +4,7 @@ import (
   "log"
   "strings"
   "os/exec"
-  "path/filepath"
+  "errors"
 )
 
 type QMakeKey int
@@ -41,7 +41,10 @@ type QtDeployer struct {
 }
 
 func (qd *QtDeployer) queryQtEnv() error {
-  out, err := exec.Command("qmake", "-query").Output()
+  log.Printf("Querying qmake environment using %v", qd.qmakePath)
+  if len(qd.qmakePath) == 0 { return errors.New("QMake has not been resolved") }
+
+  out, err := exec.Command(qd.qmakePath, "-query").Output()
   if err != nil { return err }
 
   output := string(out)
@@ -91,6 +94,18 @@ func (qd *QtDeployer) PluginsPath() string {
   return qd.qtEnv[QT_INSTALL_PLUGINS]
 }
 
+func (qd *QtDeployer) LibExecsPath() string {
+  return qd.qtEnv[QT_INSTALL_LIBEXECS]
+}
+
+func (qd *QtDeployer) DataPath() string {
+  return qd.qtEnv[QT_INSTALL_DATA]
+}
+
+func (qd *QtDeployer) TranslationsPath() string {
+  return qd.qtEnv[QT_INSTALL_TRANSLATIONS]
+}
+
 func (ad *AppDeployer) processQtLibs() {
   for request := range ad.qtChannel {
     libname := strings.ToLower(request.Basename())
@@ -104,15 +119,32 @@ func (ad *AppDeployer) processQtLibs() {
 
     if strings.HasPrefix(libname, "libqt5gui") {
       ad.deployQtPlugin("platforms/libqxcb.so")
-    } else if strings.HasPrefix(libname, "libqt5svg") {
+      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "imageformats", "plugins")
+    } else
+    if strings.HasPrefix(libname, "libqt5svg") {
       ad.deployQtPlugin("iconengines/libqsvgicon.so")
-    } else if strings.HasPrefix(libname, "libqt5printsupport") {
+    } else
+    if strings.HasPrefix(libname, "libqt5printsupport") {
       ad.deployQtPlugin("printsupport/libcupsprintersupport.so")
-    } else if strings.HasPrefix(libname, "libqt5opengl") ||
+    } else
+    if strings.HasPrefix(libname, "libqt5opengl") ||
       strings.HasPrefix(libname, "libqt5xcbqpa") {
-      ad.deployRecursively(filepath.Join(ad.qtDeployer.PluginsPath(), "xcbglintegrations"), "plugins")
-    } else if strings.HasPrefix(libname, "libqt5network") {
-      ad.deployRecursively(filepath.Join(ad.qtDeployer.PluginsPath(), "bearer"), "plugins")
+      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "xcbglintegrations", "plugins")
+    } else
+    if strings.HasPrefix(libname, "libqt5network") {
+      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "bearer", "plugins")
+    } else
+    if strings.HasPrefix(libname, "libqt5sql") {
+      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "sqldrivers", "plugins")
+    } else
+    if strings.HasPrefix(libname, "libqt5multimedia") {
+      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "mediaservice", "plugins")
+      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "audio", "plugins")
+    } else
+    if strings.HasPrefix(libname, "libqt5webenginecore") || true {
+      ad.copyOnce(ad.qtDeployer.LibExecsPath(), "QtWebEngineProcess", "libexecs")
+      ad.copyRecursively(ad.qtDeployer.DataPath(), "resources", ".")
+      ad.copyRecursively(ad.qtDeployer.TranslationsPath(), "qtwebengine_locales", "translations")
     }
 
     ad.waitGroup.Done()
@@ -121,11 +153,12 @@ func (ad *AppDeployer) processQtLibs() {
 
 func (ad *AppDeployer) deployQtPlugin(relpath string) {
   log.Printf("Deploying additional Qt plugin: %v", relpath)
+  ad.waitGroup.Add(1)
   go func() {
     ad.libsChannel <- DeployRequest {
       sourcePath: relpath,
       sourceRoot: ad.qtDeployer.PluginsPath(),
-      targetRoot: ".",
+      targetRoot: "plugins",
       isLddDependency: true,
     }
   }()

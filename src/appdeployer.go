@@ -28,6 +28,10 @@ func (dp *DeployRequest) Basename() string {
   return filepath.Base(dp.sourcePath)
 }
 
+func (dp *DeployRequest) SourceDir() string {
+  return filepath.Dir(dp.sourcePath)
+}
+
 type AppDeployer struct {
   waitGroup sync.WaitGroup
   processedLibs map[string]bool
@@ -38,14 +42,16 @@ type AppDeployer struct {
   rpathChannel chan string
   qtChannel chan DeployRequest
 
-  qtDeployer QtDeployer
+  qtDeployer *QtDeployer
   additionalLibPaths []string
   destinationPath string
   targetExePath string
 }
 
 func (ad *AppDeployer) DeployApp() {
-  go ad.qtDeployer.queryQtEnv()
+  if err := ad.qtDeployer.queryQtEnv(); err != nil {
+    log.Println(err)
+  }
 
   ad.waitGroup.Add(1)
 
@@ -101,6 +107,7 @@ func (ad *AppDeployer) processMainExe() {
 func (ad *AppDeployer) processLibs() {
   for request := range ad.libsChannel {
     libpath := request.FullPath()
+    log.Printf("Processing library: %v", libpath)
 
     if _, ok := ad.processedLibs[libpath]; !ok {
       dependencies, err := ad.findLddDependencies(libpath)
@@ -142,7 +149,7 @@ func (ad *AppDeployer) processCopyRequests() {
       // absolute path
       destinationPrefix = copyRequest.targetRoot
     } else {
-      destinationPrefix = filepath.Join(copyRequest.targetRoot, copyRequest.sourcePath)
+      destinationPrefix = filepath.Join(copyRequest.targetRoot, copyRequest.SourceDir())
     }
 
     sourcePath := copyRequest.FullPath()
@@ -237,7 +244,28 @@ func (ad *AppDeployer) resolveLibrary(libname string) (foundPath string) {
   return foundPath
 }
 
-func (ad *AppDeployer) copyRecursively(rootpath string, targetRoot string) error {
+func (ad *AppDeployer) copyOnce(sourceRoot, sourcePath, targetRoot string) error {
+  path := filepath.Join(sourceRoot, sourcePath)
+  log.Printf("Copying once %v into %v", path, targetRoot)
+  relativePath, err := filepath.Rel(sourceRoot, path)
+  if err != nil {
+    log.Println(err)
+  }
+
+  go func() {
+    ad.copyChannel <- DeployRequest{
+      sourceRoot: sourceRoot,
+      sourcePath: relativePath,
+      targetRoot: targetRoot,
+      isLddDependency: false,
+    }
+  }()
+
+  return err
+}
+
+func (ad *AppDeployer) copyRecursively(sourceRoot, sourcePath, targetRoot string) error {
+  rootpath := filepath.Join(sourceRoot, sourcePath)
   log.Printf("Copying recursively %v into %v", rootpath, targetRoot)
 
   err := filepath.Walk(rootpath, func(path string, info os.FileInfo, err error) error {
@@ -250,13 +278,13 @@ func (ad *AppDeployer) copyRecursively(rootpath string, targetRoot string) error
     }
 
     go func() {
-      relativePath, err := filepath.Rel(rootpath, path)
+      relativePath, err := filepath.Rel(sourceRoot, path)
       if err != nil {
         log.Println(err)
       }
 
       ad.copyChannel <- DeployRequest{
-        sourceRoot: rootpath,
+        sourceRoot: sourceRoot,
         sourcePath: relativePath,
         targetRoot: targetRoot,
         isLddDependency: false,
@@ -270,8 +298,9 @@ func (ad *AppDeployer) copyRecursively(rootpath string, targetRoot string) error
 }
 
 // designed to copy Qt plugins or other libraries
-func (ad *AppDeployer) deployRecursively(rootpath string, targetRoot string) error {
-  log.Printf("Deploying recursively %v to %v", rootpath, targetRoot)
+func (ad *AppDeployer) deployRecursively(sourceRoot, sourcePath, targetRoot string) error {
+  rootpath := filepath.Join(sourceRoot, sourcePath)
+  log.Printf("Deploying recursively %v in %v", sourceRoot, sourcePath)
 
   err := filepath.Walk(rootpath, func(path string, info os.FileInfo, err error) error {
     if err != nil {
@@ -289,13 +318,13 @@ func (ad *AppDeployer) deployRecursively(rootpath string, targetRoot string) err
     }
 
     go func() {
-      relativePath, err := filepath.Rel(rootpath, path)
+      relativePath, err := filepath.Rel(sourceRoot, path)
       if err != nil {
         log.Println(err)
       }
 
       ad.libsChannel <- DeployRequest {
-        sourceRoot: rootpath,
+        sourceRoot: sourceRoot,
         sourcePath: relativePath,
         targetRoot: targetRoot,
         isLddDependency: true,

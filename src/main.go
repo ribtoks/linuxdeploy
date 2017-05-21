@@ -5,6 +5,7 @@ import (
   "log"
   "flag"
   "os"
+  "os/exec"
   "io"
   "errors"
   "path/filepath"
@@ -76,6 +77,12 @@ func main() {
     rpathChannel: make(chan string),
     qtChannel: make(chan DeployRequest),
 
+    qtDeployer: &QtDeployer{
+      qmakePath: resolveQMake(),
+      qmakeVars: make(map[string]string),
+      qtEnv: make(map[QMakeKey]string),
+    },
+
     additionalLibPaths: make([]string, 0, 10),
     destinationPath: appDirPath,
     targetExePath: resolveTargetExe(),
@@ -92,7 +99,7 @@ func parseFlags() error {
   flag.Parse()
 
   _, err := os.Stat(*exePathFlag)
-  if os.IsNotExist((err)) { return err }
+  if os.IsNotExist(err) { return err }
 
   if len(*outTypeFlag) > 0 && (*outTypeFlag != "appimage") { return errors.New(appName + " only supports appimage type at this time") }
 
@@ -152,4 +159,22 @@ func resolveTargetExe() string {
   }
 
   return foundPath
+}
+
+func resolveQMake() string {
+  var err error
+  currentPath := *qmakePathFlag
+  if len(currentPath) == 0 { currentPath = "qmake" }
+
+  if _, err = os.Stat(currentPath); os.IsNotExist(err) {
+    if currentPath, err = exec.LookPath("qmake"); err != nil {
+      if currentPath, err = exec.LookPath("qmake-qt5"); err != nil {
+        if currentPath, err = exec.LookPath("qmake-qt4"); err != nil {
+          return ""
+        }
+      }
+    }
+  }
+
+  return currentPath
 }
