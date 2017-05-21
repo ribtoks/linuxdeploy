@@ -3,8 +3,10 @@ package main
 import (
   "log"
   "strings"
+  "os"
   "os/exec"
   "errors"
+  "path/filepath"
 )
 
 type QMakeKey int
@@ -38,6 +40,7 @@ type QtDeployer struct {
   qmakePath string
   qmakeVars map[string]string
   qtEnv map[QMakeKey]string
+  qmlImportDirs []string
 }
 
 func (qd *QtDeployer) queryQtEnv() error {
@@ -88,6 +91,10 @@ func (qd *QtDeployer) parseQtVars() {
   qd.qtEnv[QT_HOST_LIBS], _ = qd.qmakeVars["QT_HOST_LIBS"]
   qd.qtEnv[QMAKE_VERSION], _ = qd.qmakeVars["QMAKE_VERSION"]
   qd.qtEnv[QT_VERSION], _ = qd.qmakeVars["QT_VERSION"]
+}
+
+func (qd *QtDeployer) BinPath() string {
+  return qd.qtEnv[QT_INSTALL_BINS]
 }
 
 func (qd *QtDeployer) PluginsPath() string {
@@ -166,4 +173,33 @@ func (ad *AppDeployer) deployQtPlugin(relpath string) {
       isLddDependency: true,
     }
   }()
+}
+
+func (ad *AppDeployer) deployQmlImports() error {
+  scannerPath := filepath.Join(ad.qtDeployer.BinPath(), "qmlimportscanner")
+  log.Printf("QML import scanner: %v", scannerPath)
+
+  if _, err := os.Stat(scannerPath); err != nil {
+    if scannerPath, err = exec.LookPath("qmlimportscanner"); err != nil {
+      log.Printf("Cannot find qmlimportscanner")
+      return err
+    }
+  }
+
+  args := make([]string, 0, 10)
+  for _, qmldir := range ad.qtDeployer.qmlImportDirs {
+    args = append(args, "-rootPath")
+    args = append(args, qmldir)
+  }
+
+  args = append(args, "-importPath")
+  args = append(args, ad.qtDeployer.QmlPath())
+
+  out, err := exec.Command(scannerPath, args...).Output()
+  if err != nil { return err }
+
+  jsonOutput := string(out)
+  log.Printf(jsonOutput)
+
+  return nil
 }
