@@ -238,6 +238,8 @@ func (ad *AppDeployer) resolveLibrary(libname string) (foundPath string) {
 }
 
 func (ad *AppDeployer) copyRecursively(rootpath string, targetRoot string) error {
+  log.Printf("Copying recursively %v into %v", rootpath, targetRoot)
+
   err := filepath.Walk(rootpath, func(path string, info os.FileInfo, err error) error {
     if err != nil {
       return err
@@ -269,6 +271,8 @@ func (ad *AppDeployer) copyRecursively(rootpath string, targetRoot string) error
 
 // designed to copy Qt plugins or other libraries
 func (ad *AppDeployer) deployRecursively(rootpath string, targetRoot string) error {
+  log.Printf("Deploying recursively %v to %v", rootpath, targetRoot)
+
   err := filepath.Walk(rootpath, func(path string, info os.FileInfo, err error) error {
     if err != nil {
       return err

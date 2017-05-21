@@ -100,6 +100,8 @@ func (ad *AppDeployer) processQtLibs() {
       continue
     }
 
+    log.Printf("Inspecting Qt lib: %v", request.Basename())
+
     if strings.HasPrefix(libname, "libqt5gui") {
       ad.deployQtPlugin("platforms/libqxcb.so")
     } else if strings.HasPrefix(libname, "libqt5svg") {
@@ -118,6 +120,7 @@ func (ad *AppDeployer) processQtLibs() {
 }
 
 func (ad *AppDeployer) deployQtPlugin(relpath string) {
+  log.Printf("Deploying additional Qt plugin: %v", relpath)
   go func() {
     ad.libsChannel <- DeployRequest {
       sourcePath: relpath,
