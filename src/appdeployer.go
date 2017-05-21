@@ -13,7 +13,7 @@ type DeployRequest struct {
   sourcePath string
   sourceRoot string // if empty then sourcePath is absolute path
   targetRoot string
-  isAppDependency bool
+  isLddDependency bool
 }
 
 func (dp *DeployRequest) FullPath() string {
@@ -24,32 +24,41 @@ func (dp *DeployRequest) FullPath() string {
   }
 }
 
+func (dp *DeployRequest) Basename() string {
+  return filepath.Base(dp.sourcePath)
+}
+
 type AppDeployer struct {
   waitGroup sync.WaitGroup
   processedLibs map[string]bool
 
-  libsChannel chan *DeployRequest
-  copyChannel chan *DeployRequest
+  libsChannel chan DeployRequest
+  copyChannel chan DeployRequest
   stripChannel chan string
   rpathChannel chan string
-  qtChannel chan string
+  qtChannel chan DeployRequest
 
+  qtDeployer QtDeployer
   additionalLibPaths []string
   destinationPath string
   targetExePath string
 }
 
 func (ad *AppDeployer) DeployApp() {
+  go ad.qtDeployer.queryQtEnv()
+
   ad.waitGroup.Add(1)
 
   go ad.processMainExe()
   go ad.processCopyRequests()
+  go ad.processQtLibs()
 
   log.Printf("Waiting for processing to finish")
   ad.waitGroup.Wait()
   log.Printf("Processing has finished")
   close(ad.libsChannel)
   close(ad.copyChannel)
+  close(ad.qtChannel)
 }
 
 func (ad *AppDeployer) processMainExe() {
@@ -59,10 +68,10 @@ func (ad *AppDeployer) processMainExe() {
 
     ad.waitGroup.Add(1)
     go func() {
-      ad.copyChannel <- &DeployRequest{
+      ad.copyChannel <- DeployRequest{
         sourcePath: ad.targetExePath,
         targetRoot: ".",
-        isAppDependency: true,
+        isLddDependency: true,
       }
     }()
 
@@ -70,10 +79,10 @@ func (ad *AppDeployer) processMainExe() {
       if _, ok := ad.processedLibs[dependPath]; !ok {
         ad.waitGroup.Add(1)
         go func(dlp string) {
-          ad.libsChannel <- &DeployRequest {
+          ad.libsChannel <- DeployRequest {
             sourcePath: dlp,
             targetRoot: "lib",
-            isAppDependency: true,
+            isLddDependency: true,
           }
         }(dependPath)
       } else {
@@ -99,25 +108,20 @@ func (ad *AppDeployer) processLibs() {
         ad.processedLibs[libpath] = true
 
         ad.waitGroup.Add(1)
-        go func(sourcePath, sourceRoot, targetRoot string, isAppDependency bool) {
-          ad.copyChannel <- &DeployRequest{
-            sourceRoot: sourceRoot,
-            sourcePath: sourcePath,
-            targetRoot: targetRoot,
-            isAppDependency: isAppDependency,
-          }
-        }(request.sourcePath, request.sourceRoot, request.targetRoot, request.isAppDependency)
+        go func(copyRequest DeployRequest) {
+          ad.copyChannel <- copyRequest
+        }(request)
 
         for _, dependPath := range dependencies {
           if _, ok := ad.processedLibs[dependPath]; !ok {
             ad.waitGroup.Add(1)
-            go func(dlp string, isAppDependency bool) {
-              ad.libsChannel <- &DeployRequest {
+            go func(dlp string, isLddDependency bool) {
+              ad.libsChannel <- DeployRequest {
                 sourcePath: dlp,
                 targetRoot: "lib",
-                isAppDependency: isAppDependency,
+                isLddDependency: isLddDependency,
               }
-            }(dependPath, request.isAppDependency)
+            }(dependPath, request.isLddDependency)
           }
         }
       } else {
@@ -147,9 +151,16 @@ func (ad *AppDeployer) processCopyRequests() {
     ensureDirExists(destinationPath)
 
     log.Printf("Copying %v to %v", sourcePath, destinationPath)
-    copyFile(sourcePath, destinationPath)
+    err := copyFile(sourcePath, destinationPath)
 
-    // TODO: submit to strip/patchelf/etc. if copyRequest.isAppDependency
+    if err == nil && copyRequest.isLddDependency {
+      ad.waitGroup.Add(1)
+      go func(qtRequest DeployRequest) {
+        ad.qtChannel <- qtRequest
+      }(copyRequest)
+    }
+
+    // TODO: submit to strip/patchelf/etc. if copyRequest.isLddDependency
 
     ad.waitGroup.Done()
   }
@@ -242,11 +253,11 @@ func (ad *AppDeployer) copyRecursively(rootpath string, targetRoot string) error
         log.Println(err)
       }
 
-      ad.copyChannel <- &DeployRequest{
+      ad.copyChannel <- DeployRequest{
         sourceRoot: rootpath,
         sourcePath: relativePath,
         targetRoot: targetRoot,
-        isAppDependency: false,
+        isLddDependency: false,
       }
     }()
 
@@ -279,10 +290,11 @@ func (ad *AppDeployer) deployRecursively(rootpath string, targetRoot string) err
         log.Println(err)
       }
 
-      ad.libsChannel <- &DeployRequest {
+      ad.libsChannel <- DeployRequest {
         sourceRoot: rootpath,
         sourcePath: relativePath,
-        isAppDependency: true,
+        targetRoot: targetRoot,
+        isLddDependency: true,
       }
     }()
 

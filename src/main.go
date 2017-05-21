@@ -37,6 +37,7 @@ var (
   exePathFlag = flag.String("exe", "", "Path to the executable")
   appDirPathFlag = flag.String("appdir", "", "Path to the AppDir (if 'type' is appimage)")
   overwriteFlag = flag.Bool("overwrite", false, "Overwrite output if preset")
+  qmakePathFlag = flag.String("qmake", "", "Path to qmake")
 )
 
 const (
@@ -70,10 +71,10 @@ func main() {
 
   appDeployer := &AppDeployer{
     processedLibs: make(map[string]bool),
-    libsChannel: make(chan *DeployRequest),
-    copyChannel: make(chan *DeployRequest),
+    libsChannel: make(chan DeployRequest),
+    copyChannel: make(chan DeployRequest),
     rpathChannel: make(chan string),
-    qtChannel: make(chan string),
+    qtChannel: make(chan DeployRequest),
 
     additionalLibPaths: make([]string, 0, 10),
     destinationPath: appDirPath,
