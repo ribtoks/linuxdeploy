@@ -106,6 +106,10 @@ func (qd *QtDeployer) TranslationsPath() string {
   return qd.qtEnv[QT_INSTALL_TRANSLATIONS]
 }
 
+func (qd *QtDeployer) QmlPath() string {
+  return qd.qtEnv[QT_INSTALL_QML]
+}
+
 func (ad *AppDeployer) processQtLibs() {
   for request := range ad.qtChannel {
     libname := strings.ToLower(request.Basename())
@@ -141,7 +145,7 @@ func (ad *AppDeployer) processQtLibs() {
       ad.deployRecursively(ad.qtDeployer.PluginsPath(), "mediaservice", "plugins")
       ad.deployRecursively(ad.qtDeployer.PluginsPath(), "audio", "plugins")
     } else
-    if strings.HasPrefix(libname, "libqt5webenginecore") || true {
+    if strings.HasPrefix(libname, "libqt5webenginecore") {
       ad.copyOnce(ad.qtDeployer.LibExecsPath(), "QtWebEngineProcess", "libexecs")
       ad.copyRecursively(ad.qtDeployer.DataPath(), "resources", ".")
       ad.copyRecursively(ad.qtDeployer.TranslationsPath(), "qtwebengine_locales", "translations")

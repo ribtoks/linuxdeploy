@@ -10,10 +10,10 @@ import (
 )
 
 type DeployRequest struct {
-  sourcePath string
+  sourcePath string // relative or absolute path of file to process
   sourceRoot string // if empty then sourcePath is absolute path
-  targetRoot string
-  isLddDependency bool
+  targetRoot string // target *relative* path
+  isLddDependency bool // if true, check ldd dependencies
 }
 
 func (dp *DeployRequest) FullPath() string {
