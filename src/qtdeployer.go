@@ -95,7 +95,10 @@ func (ad *AppDeployer) processQtLibs() {
   for request := range ad.qtChannel {
     libname := strings.ToLower(request.Basename())
 
-    if !strings.HasPrefix(libname, "libqt") { continue }
+    if !strings.HasPrefix(libname, "libqt") {
+      ad.waitGroup.Done()
+      continue
+    }
 
     if strings.HasPrefix(libname, "libqt5gui") {
       ad.deployQtPlugin("platforms/libqxcb.so")
