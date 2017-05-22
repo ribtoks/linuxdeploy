@@ -82,6 +82,8 @@ func main() {
       qmakeVars: make(map[string]string),
       qtEnv: make(map[QMakeKey]string),
       qmlImportDirs: qmlImports,
+      qmlImportsDeployed: false,
+      qtEnvironmentSet: false,
     },
 
     additionalLibPaths: make([]string, 0, 10),

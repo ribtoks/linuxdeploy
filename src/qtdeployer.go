@@ -7,6 +7,7 @@ import (
   "os/exec"
   "errors"
   "path/filepath"
+  "encoding/json"
 )
 
 type QMakeKey int
@@ -41,6 +42,8 @@ type QtDeployer struct {
   qmakeVars map[string]string
   qtEnv map[QMakeKey]string
   qmlImportDirs []string
+  qmlImportsDeployed bool
+  qtEnvironmentSet bool
 }
 
 func (qd *QtDeployer) queryQtEnv() error {
@@ -68,6 +71,7 @@ func (qd *QtDeployer) queryQtEnv() error {
 
   qd.parseQtVars()
   log.Println("Parsed qmake output: %v", qd.qtEnv)
+  qd.qtEnvironmentSet = true
   return nil
 }
 
@@ -118,12 +122,21 @@ func (qd *QtDeployer) QmlPath() string {
 }
 
 func (ad *AppDeployer) processQtLibs() {
+  if !ad.qtDeployer.qtEnvironmentSet {
+    log.Printf("Qt Environment is not initialized")
+    return
+  }
+
   for request := range ad.qtChannel {
     libname := strings.ToLower(request.Basename())
 
     if !strings.HasPrefix(libname, "libqt") {
       ad.waitGroup.Done()
       continue
+    }
+
+    if (!ad.qtDeployer.qmlImportsDeployed) {
+      ad.deployQmlImports()
     }
 
     log.Printf("Inspecting Qt lib: %v", request.Basename())
@@ -176,6 +189,9 @@ func (ad *AppDeployer) deployQtPlugin(relpath string) {
 }
 
 func (ad *AppDeployer) deployQmlImports() error {
+  ad.qtDeployer.qmlImportsDeployed = true
+  log.Printf("Processing QML imports from %v", ad.qtDeployer.qmlImportDirs)
+
   scannerPath := filepath.Join(ad.qtDeployer.BinPath(), "qmlimportscanner")
   log.Printf("QML import scanner: %v", scannerPath)
 
@@ -198,8 +214,40 @@ func (ad *AppDeployer) deployQmlImports() error {
   out, err := exec.Command(scannerPath, args...).Output()
   if err != nil { return err }
 
-  jsonOutput := string(out)
-  log.Printf(jsonOutput)
+  err = ad.processQmlImportsJson(out)
+  return err
+}
+
+type QmlImport struct {
+  classname string `json:"classname"`
+  name string `json:"name"`
+  path string `json:"path"`
+  plugin string `json:"plugin"`
+  importType string `json:"type"`
+  version string `json:"version"`
+}
+
+func (ad *AppDeployer) processQmlImportsJson(jsonRaw []byte) (err error) {
+  var qmlImports []QmlImport
+  err = json.Unmarshal(jsonRaw, &qmlImports)
+  if err != nil { return err }
+
+  sourceRoot := ad.qtDeployer.QmlPath()
+
+  for _, qmlImport := range qmlImports {
+    relativePath, err := filepath.Rel(sourceRoot, qmlImport.path)
+    if err != nil || len(qmlImport.name) == 0 {
+      log.Printf("Skipping import %v", qmlImport)
+      continue
+    }
+
+    if qmlImport.importType != "module" {
+      log.Printf("Skipping non-module import %v", qmlImport)
+      continue
+    }
+
+    ad.copyOnce(sourceRoot, relativePath, "qml")
+  }
 
   return nil
 }

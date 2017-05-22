@@ -313,23 +313,29 @@ func (ad *AppDeployer) deployRecursively(sourceRoot, sourcePath, targetRoot stri
 
     // copy only libraries
     basename := filepath.Base(path)
-    if !strings.Contains(basename, ".so") {
-      return nil
+    isLibrary := strings.Contains(basename, ".so")
+
+    relativePath, err := filepath.Rel(sourceRoot, path)
+    if err != nil {
+      log.Println(err)
     }
 
-    go func() {
-      relativePath, err := filepath.Rel(sourceRoot, path)
-      if err != nil {
-        log.Println(err)
-      }
+    request := DeployRequest {
+      sourceRoot: sourceRoot,
+      sourcePath: relativePath,
+      targetRoot: targetRoot,
+      isLddDependency: isLibrary,
+    }
 
-      ad.libsChannel <- DeployRequest {
-        sourceRoot: sourceRoot,
-        sourcePath: relativePath,
-        targetRoot: targetRoot,
-        isLddDependency: true,
-      }
-    }()
+    if isLibrary {
+      go func() {
+        ad.libsChannel <- request
+      }()
+    } else {
+      go func() {
+        ad.copyChannel <- request
+      }()
+    }
 
     return nil
   })
