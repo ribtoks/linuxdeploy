@@ -223,12 +223,12 @@ func (ad *AppDeployer) deployQmlImports() error {
 }
 
 type QmlImport struct {
-  classname string `json:"classname,omitempty"`
-  name string `json:"name,omitempty"`
-  path string `json:"path,omitempty"`
-  plugin string `json:"plugin,omitempty"`
-  importType string `json:"type,omitempty"`
-  version string `json:"version,omitempty"`
+  Classname string `json:"classname,omitempty"`
+  Name string `json:"name,omitempty"`
+  Path string `json:"path,omitempty"`
+  Plugin string `json:"plugin,omitempty"`
+  ImportType string `json:"type,omitempty"`
+  Version string `json:"version,omitempty"`
 }
 
 func (ad *AppDeployer) processQmlImportsJson(jsonRaw []byte) (err error) {
@@ -242,13 +242,13 @@ func (ad *AppDeployer) processQmlImportsJson(jsonRaw []byte) (err error) {
   sourceRoot := ad.qtDeployer.QmlPath()
 
   for _, qmlImport := range qmlImports {
-    relativePath, err := filepath.Rel(sourceRoot, qmlImport.path)
-    if err != nil || len(qmlImport.name) == 0 {
+    relativePath, err := filepath.Rel(sourceRoot, qmlImport.Path)
+    if err != nil || len(qmlImport.Name) == 0 {
       log.Printf("Skipping import %v", qmlImport)
       continue
     }
 
-    if qmlImport.importType != "module" {
+    if qmlImport.ImportType != "module" {
       log.Printf("Skipping non-module import %v", qmlImport)
       continue
     }
