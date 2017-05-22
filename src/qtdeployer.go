@@ -193,7 +193,6 @@ func (ad *AppDeployer) deployQmlImports() error {
   log.Printf("Processing QML imports from %v", ad.qtDeployer.qmlImportDirs)
 
   scannerPath := filepath.Join(ad.qtDeployer.BinPath(), "qmlimportscanner")
-  log.Printf("QML import scanner: %v", scannerPath)
 
   if _, err := os.Stat(scannerPath); err != nil {
     if scannerPath, err = exec.LookPath("qmlimportscanner"); err != nil {
@@ -201,6 +200,8 @@ func (ad *AppDeployer) deployQmlImports() error {
       return err
     }
   }
+
+  log.Printf("QML import scanner: %v", scannerPath)
 
   args := make([]string, 0, 10)
   for _, qmldir := range ad.qtDeployer.qmlImportDirs {
@@ -212,7 +213,10 @@ func (ad *AppDeployer) deployQmlImports() error {
   args = append(args, ad.qtDeployer.QmlPath())
 
   out, err := exec.Command(scannerPath, args...).Output()
-  if err != nil { return err }
+  if err != nil {
+    log.Printf("QML import scanner failed with %v", err)
+    return err
+  }
 
   err = ad.processQmlImportsJson(out)
   return err
@@ -228,6 +232,8 @@ type QmlImport struct {
 }
 
 func (ad *AppDeployer) processQmlImportsJson(jsonRaw []byte) (err error) {
+  log.Printf("Parsing QML imports")
+
   var qmlImports []QmlImport
   err = json.Unmarshal(jsonRaw, &qmlImports)
   if err != nil { return err }
