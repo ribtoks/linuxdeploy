@@ -252,6 +252,7 @@ func (ad *AppDeployer) copyOnce(sourceRoot, sourcePath, targetRoot string) error
     log.Println(err)
   }
 
+  ad.waitGroup.Add(1)
   go func() {
     ad.copyChannel <- DeployRequest{
       sourceRoot: sourceRoot,
@@ -277,12 +278,13 @@ func (ad *AppDeployer) copyRecursively(sourceRoot, sourcePath, targetRoot string
       return nil
     }
 
-    go func() {
-      relativePath, err := filepath.Rel(sourceRoot, path)
-      if err != nil {
-        log.Println(err)
-      }
+    relativePath, err := filepath.Rel(sourceRoot, path)
+    if err != nil {
+      log.Println(err)
+    }
 
+    ad.waitGroup.Add(1)
+    go func() {
       ad.copyChannel <- DeployRequest{
         sourceRoot: sourceRoot,
         sourcePath: relativePath,
@@ -327,6 +329,7 @@ func (ad *AppDeployer) deployRecursively(sourceRoot, sourcePath, targetRoot stri
       isLddDependency: isLibrary,
     }
 
+    ad.waitGroup.Add(1)
     if isLibrary {
       go func() {
         ad.libsChannel <- request
