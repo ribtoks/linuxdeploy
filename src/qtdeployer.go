@@ -223,12 +223,12 @@ func (ad *AppDeployer) deployQmlImports() error {
 }
 
 type QmlImport struct {
-  classname string `json:"classname"`
-  name string `json:"name"`
-  path string `json:"path"`
-  plugin string `json:"plugin"`
-  importType string `json:"type"`
-  version string `json:"version"`
+  classname string `json:"classname,omitempty"`
+  name string `json:"name,omitempty"`
+  path string `json:"path,omitempty"`
+  plugin string `json:"plugin,omitempty"`
+  importType string `json:"type,omitempty"`
+  version string `json:"version,omitempty"`
 }
 
 func (ad *AppDeployer) processQmlImportsJson(jsonRaw []byte) (err error) {
@@ -237,6 +237,7 @@ func (ad *AppDeployer) processQmlImportsJson(jsonRaw []byte) (err error) {
   var qmlImports []QmlImport
   err = json.Unmarshal(jsonRaw, &qmlImports)
   if err != nil { return err }
+  log.Printf("Parsed %v imports", len(qmlImports))
 
   sourceRoot := ad.qtDeployer.QmlPath()
 
