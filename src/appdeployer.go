@@ -313,7 +313,6 @@ func (ad *AppDeployer) deployRecursively(sourceRoot, sourcePath, targetRoot stri
       return nil
     }
 
-    // copy only libraries
     basename := filepath.Base(path)
     isLibrary := strings.Contains(basename, ".so")
 

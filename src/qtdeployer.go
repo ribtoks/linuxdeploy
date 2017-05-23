@@ -40,6 +40,7 @@ const (
 type QtDeployer struct {
   qmakePath string
   qmakeVars map[string]string
+  deployedQmlImports map[string]bool
   qtEnv map[QMakeKey]string
   qmlImportDirs []string
   qmlImportsDeployed bool
@@ -121,6 +122,16 @@ func (qd *QtDeployer) QmlPath() string {
   return qd.qtEnv[QT_INSTALL_QML]
 }
 
+func (qd *QtDeployer) accountQmlImport(path string) {
+  qd.deployedQmlImports[path] = true
+}
+
+func (qd *QtDeployer) isQmlImportDeployed(path string) (deployed bool) {
+  // TODO: also check directory hierarchy?
+  _, deployed = qd.deployedQmlImports[path]
+  return deployed
+}
+
 func (ad *AppDeployer) processQtLibs() {
   if !ad.qtDeployer.qtEnvironmentSet {
     log.Printf("Qt Environment is not initialized")
@@ -136,7 +147,7 @@ func (ad *AppDeployer) processQtLibs() {
     }
 
     if (!ad.qtDeployer.qmlImportsDeployed) {
-      ad.deployQmlImports()
+      go ad.deployQmlImports()
     }
 
     log.Printf("Inspecting Qt lib: %v", request.Basename())
@@ -243,6 +254,7 @@ func (ad *AppDeployer) processQmlImportsJson(jsonRaw []byte) (err error) {
 
   for _, qmlImport := range qmlImports {
     relativePath, err := filepath.Rel(sourceRoot, qmlImport.Path)
+
     if err != nil || len(qmlImport.Name) == 0 {
       log.Printf("Skipping import %v", qmlImport)
       continue
@@ -253,7 +265,19 @@ func (ad *AppDeployer) processQmlImportsJson(jsonRaw []byte) (err error) {
       continue
     }
 
-    ad.copyOnce(sourceRoot, relativePath, "qml")
+    if len(qmlImport.Path) == 0 {
+      log.Printf("Skipping import without path %v", qmlImport)
+      continue
+    }
+
+    if ad.qtDeployer.isQmlImportDeployed(qmlImport.Path) {
+      log.Printf("Skipping already deployed QML import %v", qmlImport.Path)
+      continue
+    }
+
+    log.Printf("Deploying QML import %v", qmlImport.Path)
+    ad.qtDeployer.accountQmlImport(qmlImport.Path)
+    ad.deployRecursively(sourceRoot, relativePath, "qml")
   }
 
   return nil
