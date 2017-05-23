@@ -41,11 +41,11 @@ type AppDeployer struct {
   waitGroup sync.WaitGroup
   processedLibs map[string]bool
 
-  libsChannel chan DeployRequest
-  copyChannel chan DeployRequest
-  stripChannel chan string
-  rpathChannel chan string
-  qtChannel chan DeployRequest
+  libsChannel chan *DeployRequest
+  copyChannel chan *DeployRequest
+  stripChannel chan *DeployRequest
+  rpathChannel chan *DeployRequest
+  qtChannel chan *DeployRequest
 
   qtDeployer *QtDeployer
   additionalLibPaths []string
@@ -79,7 +79,7 @@ func (ad *AppDeployer) processMainExe() {
 
     ad.waitGroup.Add(1)
     go func() {
-      ad.copyChannel <- DeployRequest{
+      ad.copyChannel <- &DeployRequest{
         sourcePath: ad.targetExePath,
         targetRoot: ".",
         isLddDependency: true,
@@ -90,7 +90,7 @@ func (ad *AppDeployer) processMainExe() {
       if _, ok := ad.processedLibs[dependPath]; !ok {
         ad.waitGroup.Add(1)
         go func(dlp string) {
-          ad.libsChannel <- DeployRequest {
+          ad.libsChannel <- &DeployRequest {
             sourcePath: dlp,
             targetRoot: "lib",
             isLddDependency: true,
@@ -111,71 +111,76 @@ func (ad *AppDeployer) processMainExe() {
 
 func (ad *AppDeployer) processLibs() {
   for request := range ad.libsChannel {
-    libpath := request.FullPath()
-    log.Printf("Processing library: %v", libpath)
-
-    if _, ok := ad.processedLibs[libpath]; !ok {
-      dependencies, err := ad.findLddDependencies(libpath)
-      if (err == nil) {
-        ad.processedLibs[libpath] = true
-
-        ad.waitGroup.Add(1)
-        go func(copyRequest DeployRequest) {
-          ad.copyChannel <- copyRequest
-        }(request)
-
-        for _, dependPath := range dependencies {
-          if _, ok := ad.processedLibs[dependPath]; !ok {
-            ad.waitGroup.Add(1)
-            go func(dlp string, isLddDependency bool) {
-              ad.libsChannel <- DeployRequest {
-                sourcePath: dlp,
-                targetRoot: "lib",
-                isLddDependency: isLddDependency,
-              }
-            }(dependPath, request.isLddDependency)
-          }
-        }
-      } else {
-        log.Printf("Error while dependency check: %v", err)
-      }
-    }
-
+    ad.processLibrary(request)
     ad.waitGroup.Done()
+  }
+}
+
+func (ad *AppDeployer) processLibrary(request *DeployRequest) {
+  libpath := request.FullPath()
+  log.Printf("Processing library: %v", libpath)
+
+  if _, ok := ad.processedLibs[libpath]; !ok {
+    dependencies, err := ad.findLddDependencies(libpath)
+    if (err == nil) {
+      ad.processedLibs[libpath] = true
+
+      ad.waitGroup.Add(1)
+      go func(copyRequest *DeployRequest) {
+        ad.copyChannel <- copyRequest
+      }(request)
+
+      for _, dependPath := range dependencies {
+        if _, ok := ad.processedLibs[dependPath]; !ok {
+          ad.waitGroup.Add(1)
+          go func(dlp string, isLddDependency bool) {
+            ad.libsChannel <- &DeployRequest{
+              sourcePath: dlp,
+              targetRoot: "lib",
+              isLddDependency: isLddDependency,
+            }
+          }(dependPath, request.isLddDependency)
+        }
+      }
+    } else {
+      log.Printf("Error while dependency check: %v", err)
+    }
   }
 }
 
 func (ad *AppDeployer) processCopyRequests() {
   for copyRequest := range ad.copyChannel {
-
-    var destinationPath, destinationPrefix string
-
-    if len(copyRequest.sourceRoot) == 0 {
-      // absolute path
-      destinationPrefix = copyRequest.targetRoot
-    } else {
-      destinationPrefix = filepath.Join(copyRequest.targetRoot, copyRequest.SourceDir())
-    }
-
-    sourcePath := copyRequest.FullPath()
-    destinationPath = filepath.Join(ad.destinationPath, destinationPrefix, filepath.Base(copyRequest.sourcePath))
-
-    ensureDirExists(destinationPath)
-
-    log.Printf("Copying %v to %v", sourcePath, destinationPath)
-    err := copyFile(sourcePath, destinationPath)
-
-    if err == nil && copyRequest.isLddDependency {
-      ad.waitGroup.Add(1)
-      go func(qtRequest DeployRequest) {
-        ad.qtChannel <- qtRequest
-      }(copyRequest)
-    }
-
-    // TODO: submit to strip/patchelf/etc. if copyRequest.isLddDependency
-
+    ad.processCopyRequest(copyRequest)
     ad.waitGroup.Done()
   }
+}
+
+func (ad *AppDeployer) processCopyRequest(copyRequest *DeployRequest) {
+  var destinationPath, destinationPrefix string
+
+  if len(copyRequest.sourceRoot) == 0 {
+    // absolute path
+    destinationPrefix = copyRequest.targetRoot
+  } else {
+    destinationPrefix = filepath.Join(copyRequest.targetRoot, copyRequest.SourceDir())
+  }
+
+  sourcePath := copyRequest.FullPath()
+  destinationPath = filepath.Join(ad.destinationPath, destinationPrefix, filepath.Base(copyRequest.sourcePath))
+
+  ensureDirExists(destinationPath)
+
+  log.Printf("Copying %v to %v", sourcePath, destinationPath)
+  err := copyFile(sourcePath, destinationPath)
+
+  if err == nil && copyRequest.isLddDependency {
+    ad.waitGroup.Add(1)
+    go func(qtRequest *DeployRequest) {
+      ad.qtChannel <- qtRequest
+    }(copyRequest)
+  }
+
+  // TODO: submit to strip/patchelf/etc. if copyRequest.isLddDependency
 }
 
 func (ad *AppDeployer) findLddDependencies(filepath string) ([]string, error) {
@@ -259,7 +264,7 @@ func (ad *AppDeployer) copyOnce(sourceRoot, sourcePath, targetRoot string) error
 
   ad.waitGroup.Add(1)
   go func() {
-    ad.copyChannel <- DeployRequest{
+    ad.copyChannel <- &DeployRequest{
       sourceRoot: sourceRoot,
       sourcePath: relativePath,
       targetRoot: targetRoot,
@@ -290,7 +295,7 @@ func (ad *AppDeployer) copyRecursively(sourceRoot, sourcePath, targetRoot string
 
     ad.waitGroup.Add(1)
     go func() {
-      ad.copyChannel <- DeployRequest{
+      ad.copyChannel <- &DeployRequest{
         sourceRoot: sourceRoot,
         sourcePath: relativePath,
         targetRoot: targetRoot,
@@ -330,7 +335,7 @@ func (ad *AppDeployer) deployRecursively(sourceRoot, sourcePath, targetRoot stri
       log.Println(err)
     }
 
-    request := DeployRequest {
+    request := &DeployRequest {
       sourceRoot: sourceRoot,
       sourcePath: relativePath,
       targetRoot: targetRoot,

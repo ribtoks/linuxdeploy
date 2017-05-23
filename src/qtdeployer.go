@@ -138,51 +138,54 @@ func (ad *AppDeployer) processQtLibs() {
     return
   }
 
+  if (!ad.qtDeployer.qmlImportsDeployed) {
+    // if we have at least 1 Qt library
+    go ad.deployQmlImports()
+  }
+
   for request := range ad.qtChannel {
-    libname := strings.ToLower(request.Basename())
-
-    if !strings.HasPrefix(libname, "libqt") {
-      ad.waitGroup.Done()
-      continue
-    }
-
-    if (!ad.qtDeployer.qmlImportsDeployed) {
-      go ad.deployQmlImports()
-    }
-
-    log.Printf("Inspecting Qt lib: %v", request.Basename())
-
-    if strings.HasPrefix(libname, "libqt5gui") {
-      ad.deployQtPlugin("platforms/libqxcb.so")
-      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "imageformats", "plugins", DEPLOY_LIBRARIES)
-    } else
-    if strings.HasPrefix(libname, "libqt5svg") {
-      ad.deployQtPlugin("iconengines/libqsvgicon.so")
-    } else
-    if strings.HasPrefix(libname, "libqt5printsupport") {
-      ad.deployQtPlugin("printsupport/libcupsprintersupport.so")
-    } else
-    if strings.HasPrefix(libname, "libqt5opengl") ||
-      strings.HasPrefix(libname, "libqt5xcbqpa") {
-      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "xcbglintegrations", "plugins", DEPLOY_LIBRARIES)
-    } else
-    if strings.HasPrefix(libname, "libqt5network") {
-      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "bearer", "plugins", DEPLOY_LIBRARIES)
-    } else
-    if strings.HasPrefix(libname, "libqt5sql") {
-      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "sqldrivers", "plugins", DEPLOY_LIBRARIES)
-    } else
-    if strings.HasPrefix(libname, "libqt5multimedia") {
-      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "mediaservice", "plugins", DEPLOY_LIBRARIES)
-      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "audio", "plugins", DEPLOY_LIBRARIES)
-    } else
-    if strings.HasPrefix(libname, "libqt5webenginecore") {
-      ad.copyOnce(ad.qtDeployer.LibExecsPath(), "QtWebEngineProcess", "libexecs")
-      ad.copyRecursively(ad.qtDeployer.DataPath(), "resources", ".")
-      ad.copyRecursively(ad.qtDeployer.TranslationsPath(), "qtwebengine_locales", "translations")
-    }
-
+    ad.processQtLibrary(request)
     ad.waitGroup.Done()
+  }
+}
+
+func (ad *AppDeployer) processQtLibrary(request *DeployRequest) {
+  libname := strings.ToLower(request.Basename())
+
+  if !strings.HasPrefix(libname, "libqt") {
+    return
+  }
+
+  log.Printf("Inspecting Qt lib: %v", request.Basename())
+
+  if strings.HasPrefix(libname, "libqt5gui") {
+    ad.deployQtPlugin("platforms/libqxcb.so")
+    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "imageformats", "plugins", DEPLOY_LIBRARIES)
+  } else
+  if strings.HasPrefix(libname, "libqt5svg") {
+    ad.deployQtPlugin("iconengines/libqsvgicon.so")
+  } else
+  if strings.HasPrefix(libname, "libqt5printsupport") {
+    ad.deployQtPlugin("printsupport/libcupsprintersupport.so")
+  } else
+  if strings.HasPrefix(libname, "libqt5opengl") ||
+    strings.HasPrefix(libname, "libqt5xcbqpa") {
+    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "xcbglintegrations", "plugins", DEPLOY_LIBRARIES)
+  } else
+  if strings.HasPrefix(libname, "libqt5network") {
+    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "bearer", "plugins", DEPLOY_LIBRARIES)
+  } else
+  if strings.HasPrefix(libname, "libqt5sql") {
+    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "sqldrivers", "plugins", DEPLOY_LIBRARIES)
+  } else
+  if strings.HasPrefix(libname, "libqt5multimedia") {
+    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "mediaservice", "plugins", DEPLOY_LIBRARIES)
+    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "audio", "plugins", DEPLOY_LIBRARIES)
+  } else
+  if strings.HasPrefix(libname, "libqt5webenginecore") {
+    ad.copyOnce(ad.qtDeployer.LibExecsPath(), "QtWebEngineProcess", "libexecs")
+    ad.copyRecursively(ad.qtDeployer.DataPath(), "resources", ".")
+    ad.copyRecursively(ad.qtDeployer.TranslationsPath(), "qtwebengine_locales", "translations")
   }
 }
 
@@ -190,7 +193,7 @@ func (ad *AppDeployer) deployQtPlugin(relpath string) {
   log.Printf("Deploying additional Qt plugin: %v", relpath)
   ad.waitGroup.Add(1)
   go func() {
-    ad.libsChannel <- DeployRequest {
+    ad.libsChannel <- &DeployRequest {
       sourcePath: relpath,
       sourceRoot: ad.qtDeployer.PluginsPath(),
       targetRoot: "plugins",

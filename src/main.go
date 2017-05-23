@@ -72,10 +72,10 @@ func main() {
 
   appDeployer := &AppDeployer{
     processedLibs: make(map[string]bool),
-    libsChannel: make(chan DeployRequest),
-    copyChannel: make(chan DeployRequest),
-    rpathChannel: make(chan string),
-    qtChannel: make(chan DeployRequest),
+    libsChannel: make(chan *DeployRequest),
+    copyChannel: make(chan *DeployRequest),
+    rpathChannel: make(chan *DeployRequest),
+    qtChannel: make(chan *DeployRequest),
 
     qtDeployer: &QtDeployer{
       qmakePath: resolveQMake(),
