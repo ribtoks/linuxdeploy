@@ -278,6 +278,10 @@ func (ad *AppDeployer) processQmlImportsJson(jsonRaw []byte) (err error) {
       continue
     }
 
+    if qmlImport.Name == "QtQuick.Controls" {
+      ad.deployRecursively(sourceRoot, "QtQuick/PrivateWidgets", "qml", DEPLOY_EVERYTHING)
+    }
+
     log.Printf("Deploying QML import %v", qmlImport.Path)
     ad.qtDeployer.accountQmlImport(qmlImport.Path)
     ad.deployRecursively(sourceRoot, relativePath, "qml", DEPLOY_EVERYTHING)
