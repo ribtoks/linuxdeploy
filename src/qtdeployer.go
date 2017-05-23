@@ -139,7 +139,7 @@ func (ad *AppDeployer) processQtLibs() {
   }
 
   if (!ad.qtDeployer.qmlImportsDeployed) {
-    // if we have at least 1 Qt library
+    ad.qtDeployer.qmlImportsDeployed = true
     go ad.deployQmlImports()
   }
 
@@ -203,7 +203,6 @@ func (ad *AppDeployer) deployQtPlugin(relpath string) {
 }
 
 func (ad *AppDeployer) deployQmlImports() error {
-  ad.qtDeployer.qmlImportsDeployed = true
   log.Printf("Processing QML imports from %v", ad.qtDeployer.qmlImportDirs)
 
   scannerPath := filepath.Join(ad.qtDeployer.BinPath(), "qmlimportscanner")
@@ -279,6 +278,7 @@ func (ad *AppDeployer) processQmlImportsJson(jsonRaw []byte) (err error) {
     }
 
     if qmlImport.Name == "QtQuick.Controls" {
+      log.Printf("Deploying private widgets for QtQuick.Controls")
       ad.deployRecursively(sourceRoot, "QtQuick/PrivateWidgets", "qml", DEPLOY_EVERYTHING)
     }
 
