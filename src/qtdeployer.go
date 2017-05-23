@@ -154,7 +154,7 @@ func (ad *AppDeployer) processQtLibs() {
 
     if strings.HasPrefix(libname, "libqt5gui") {
       ad.deployQtPlugin("platforms/libqxcb.so")
-      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "imageformats", "plugins")
+      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "imageformats", "plugins", DEPLOY_LIBRARIES)
     } else
     if strings.HasPrefix(libname, "libqt5svg") {
       ad.deployQtPlugin("iconengines/libqsvgicon.so")
@@ -164,17 +164,17 @@ func (ad *AppDeployer) processQtLibs() {
     } else
     if strings.HasPrefix(libname, "libqt5opengl") ||
       strings.HasPrefix(libname, "libqt5xcbqpa") {
-      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "xcbglintegrations", "plugins")
+      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "xcbglintegrations", "plugins", DEPLOY_LIBRARIES)
     } else
     if strings.HasPrefix(libname, "libqt5network") {
-      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "bearer", "plugins")
+      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "bearer", "plugins", DEPLOY_LIBRARIES)
     } else
     if strings.HasPrefix(libname, "libqt5sql") {
-      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "sqldrivers", "plugins")
+      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "sqldrivers", "plugins", DEPLOY_LIBRARIES)
     } else
     if strings.HasPrefix(libname, "libqt5multimedia") {
-      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "mediaservice", "plugins")
-      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "audio", "plugins")
+      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "mediaservice", "plugins", DEPLOY_LIBRARIES)
+      ad.deployRecursively(ad.qtDeployer.PluginsPath(), "audio", "plugins", DEPLOY_LIBRARIES)
     } else
     if strings.HasPrefix(libname, "libqt5webenginecore") {
       ad.copyOnce(ad.qtDeployer.LibExecsPath(), "QtWebEngineProcess", "libexecs")
@@ -277,7 +277,7 @@ func (ad *AppDeployer) processQmlImportsJson(jsonRaw []byte) (err error) {
 
     log.Printf("Deploying QML import %v", qmlImport.Path)
     ad.qtDeployer.accountQmlImport(qmlImport.Path)
-    ad.deployRecursively(sourceRoot, relativePath, "qml")
+    ad.deployRecursively(sourceRoot, relativePath, "qml", DEPLOY_EVERYTHING)
   }
 
   return nil

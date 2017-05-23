@@ -9,6 +9,11 @@ import (
   "path/filepath"
 )
 
+const (
+  DEPLOY_EVERYTHING = false
+  DEPLOY_LIBRARIES = true
+)
+
 type DeployRequest struct {
   sourcePath string // relative or absolute path of file to process
   sourceRoot string // if empty then sourcePath is absolute path
@@ -300,7 +305,7 @@ func (ad *AppDeployer) copyRecursively(sourceRoot, sourcePath, targetRoot string
 }
 
 // designed to copy Qt plugins or other libraries
-func (ad *AppDeployer) deployRecursively(sourceRoot, sourcePath, targetRoot string) error {
+func (ad *AppDeployer) deployRecursively(sourceRoot, sourcePath, targetRoot string, onlyLibraries bool) error {
   rootpath := filepath.Join(sourceRoot, sourcePath)
   log.Printf("Deploying recursively %v in %v", sourceRoot, sourcePath)
 
@@ -315,6 +320,10 @@ func (ad *AppDeployer) deployRecursively(sourceRoot, sourcePath, targetRoot stri
 
     basename := filepath.Base(path)
     isLibrary := strings.Contains(basename, ".so")
+
+    if !isLibrary && onlyLibraries {
+      return nil
+    }
 
     relativePath, err := filepath.Rel(sourceRoot, path)
     if err != nil {
