@@ -80,6 +80,7 @@ func main() {
     qtDeployer: &QtDeployer{
       qmakePath: resolveQMake(),
       qmakeVars: make(map[string]string),
+      deployedQmlImports: make(map[string]bool),
       qtEnv: make(map[QMakeKey]string),
       qmlImportDirs: qmlImports,
       qmlImportsDeployed: false,
@@ -105,8 +106,6 @@ func parseFlags() error {
   if os.IsNotExist(err) { return err }
 
   if len(*outTypeFlag) > 0 && (*outTypeFlag != "appimage") { return errors.New(appName + " only supports appimage type at this time") }
-
-  log.Printf("AppDir is %v", *appDirPathFlag)
 
   appDirInfo, err := os.Stat(*appDirPathFlag)
   if err == nil && appDirInfo.IsDir() {

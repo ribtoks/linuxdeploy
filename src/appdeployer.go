@@ -10,6 +10,7 @@ import (
 )
 
 const (
+  // constants for parameter of deployRecursively() method
   DEPLOY_EVERYTHING = false
   DEPLOY_LIBRARIES = true
 )
@@ -254,6 +255,7 @@ func (ad *AppDeployer) resolveLibrary(libname string) (foundPath string) {
   return foundPath
 }
 
+// copies one file
 func (ad *AppDeployer) copyOnce(sourceRoot, sourcePath, targetRoot string) error {
   path := filepath.Join(sourceRoot, sourcePath)
   log.Printf("Copying once %v into %v", path, targetRoot)
@@ -275,6 +277,7 @@ func (ad *AppDeployer) copyOnce(sourceRoot, sourcePath, targetRoot string) error
   return err
 }
 
+// copies everything without inspection
 func (ad *AppDeployer) copyRecursively(sourceRoot, sourcePath, targetRoot string) error {
   rootpath := filepath.Join(sourceRoot, sourcePath)
   log.Printf("Copying recursively %v into %v", rootpath, targetRoot)
@@ -309,7 +312,7 @@ func (ad *AppDeployer) copyRecursively(sourceRoot, sourcePath, targetRoot string
   return err
 }
 
-// designed to copy Qt plugins or other libraries
+// inspects libraries for dependencies and copies other files
 func (ad *AppDeployer) deployRecursively(sourceRoot, sourcePath, targetRoot string, onlyLibraries bool) error {
   rootpath := filepath.Join(sourceRoot, sourcePath)
   log.Printf("Deploying recursively %v in %v", sourceRoot, sourcePath)
