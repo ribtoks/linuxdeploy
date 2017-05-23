@@ -74,7 +74,8 @@ func main() {
     processedLibs: make(map[string]bool),
     libsChannel: make(chan *DeployRequest),
     copyChannel: make(chan *DeployRequest),
-    rpathChannel: make(chan *DeployRequest),
+    rpathChannel: make(chan string),
+    stripChannel: make(chan string),
     qtChannel: make(chan *DeployRequest),
 
     qtDeployer: &QtDeployer{
