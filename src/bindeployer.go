@@ -67,7 +67,7 @@ func (ad *AppDeployer) findLddDependencies(filepath string) ([]string, error) {
         libpath = ad.resolveLibrary(libname)
       }
 
-      log.Printf("Extracted %v from ldd [%v]", libpath, line)
+      log.Printf("Parsed lib %v from ldd [%v]", libpath, line)
       dependencies = append(dependencies, libpath)
     } else {
       log.Printf("Cannot parse ldd line: %v", line)
@@ -134,13 +134,14 @@ func (ad *AppDeployer) processRunPathChangeRequests() {
 }
 
 func changeRPath(fullpath, destinationRoot string) {
-  relativePath, err := filepath.Rel(destinationRoot, fullpath)
+  libdir := filepath.Dir(fullpath)
+  relativePath, err := filepath.Rel(destinationRoot, libdir)
   if err != nil {
     log.Println(err)
     return
   }
 
-  rpath := fmt.Sprintf("$ORIGIN:$ORIGIN/%s", relativePath)
+  rpath := fmt.Sprintf("$ORIGIN:$ORIGIN/%s/lib/", relativePath)
   log.Printf("Changing RPATH for %v to %v", fullpath, rpath)
 
   cmd := exec.Command("patchelf", "--set-rpath", rpath, fullpath)
