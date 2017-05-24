@@ -1,0 +1,16 @@
+sudo: required
+dist: trusty
+
+language: go
+
+os:
+  - linux
+
+git:
+  depth: 3
+
+env:
+
+script:
+  - cd src/
+  - go build -o linuxdeploy
