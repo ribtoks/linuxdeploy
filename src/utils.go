@@ -99,12 +99,12 @@ func replaceQtPathVariable(buffer []byte, varname []byte, replacement []byte) {
     return
   }
 
-  if (endIndex - index) < len(replacement) {
+  if (endIndex - nextIndex) < len(replacement) {
     log.Printf("Cannot exceed length when replacing %v in Qt Path", varname)
     return
   }
 
-  i := index
+  i := nextIndex
   j := 0
   replacementSize := len(replacement)
 
