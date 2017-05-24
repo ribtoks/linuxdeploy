@@ -41,30 +41,24 @@ func (ad *AppDeployer) processLibrary(request *DeployRequest) {
   libpath := request.FullPath()
   log.Printf("Processing library: %v", libpath)
 
-  if _, ok := ad.processedLibs[libpath]; !ok {
-    dependencies, err := ad.findLddDependencies(libpath)
-    if (err == nil) {
-      ad.processedLibs[libpath] = true
+  if ad.isLibraryDeployed(libpath) { return }
 
-      ad.waitGroup.Add(1)
-      go func(copyRequest *DeployRequest) {
-        ad.copyChannel <- copyRequest
-      }(request)
+  dependencies, err := ad.findLddDependencies(libpath)
+  if err != nil {
+    log.Printf("Error while dependency check: %v", err)
+    return
+  }
 
-      for _, dependPath := range dependencies {
-        if _, ok := ad.processedLibs[dependPath]; !ok {
-          ad.waitGroup.Add(1)
-          go func(dlp string, isLddDependency bool) {
-            ad.libsChannel <- &DeployRequest{
-              sourcePath: dlp,
-              targetRoot: "lib",
-              isLddDependency: isLddDependency,
-            }
-          }(dependPath, request.isLddDependency)
-        }
-      }
-    } else {
-      log.Printf("Error while dependency check: %v", err)
+  ad.accountLibrary(libpath)
+
+  ad.waitGroup.Add(1)
+  go func(copyRequest *DeployRequest) {
+    ad.copyChannel <- copyRequest
+  }(request)
+
+  for _, dependPath := range dependencies {
+    if !ad.isLibraryDeployed(dependPath) {
+      ad.deployLibrary("", dependPath, "lib")
     }
   }
 }
@@ -83,16 +77,17 @@ func (ad *AppDeployer) findLddDependencies(filepath string) ([]string, error) {
     line = strings.TrimSpace(line)
     libname, libpath, err := parseLddOutputLine(line)
 
-    if err == nil {
-      if len(libpath) == 0 {
-        libpath = ad.resolveLibrary(libname)
-      }
-
-      log.Printf("Parsed lib %v from ldd [%v]", libpath, line)
-      dependencies = append(dependencies, libpath)
-    } else {
+    if err != nil {
       log.Printf("Cannot parse ldd line: %v", line)
+      continue
     }
+
+    if len(libpath) == 0 {
+      libpath = ad.resolveLibrary(libname)
+    }
+
+    log.Printf("Parsed lib %v from ldd [%v]", libpath, line)
+    dependencies = append(dependencies, libpath)
   }
 
   return dependencies, nil

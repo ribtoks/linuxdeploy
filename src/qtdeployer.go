@@ -76,6 +76,7 @@ func (qd *QtDeployer) queryQtEnv() error {
   if err != nil { return err }
 
   output := string(out)
+  // TODO: probably switch to bytes.Split for better performance
   lines := strings.Split(output, "\n")
 
   for _, line := range lines {
@@ -173,10 +174,7 @@ func (ad *AppDeployer) processQtLibs() {
 func (ad *AppDeployer) processQtLibrary(request *DeployRequest) {
   libname := strings.ToLower(request.Basename())
 
-  if !strings.HasPrefix(libname, "libqt") {
-    return
-  }
-
+  if !strings.HasPrefix(libname, "libqt") { return }
   log.Printf("Inspecting Qt lib: %v", request.Basename())
 
   if strings.HasPrefix(libname, "libqt5gui") {
@@ -212,15 +210,7 @@ func (ad *AppDeployer) processQtLibrary(request *DeployRequest) {
 
 func (ad *AppDeployer) deployQtPlugin(relpath string) {
   log.Printf("Deploying additional Qt plugin: %v", relpath)
-  ad.waitGroup.Add(1)
-  go func() {
-    ad.libsChannel <- &DeployRequest {
-      sourcePath: relpath,
-      sourceRoot: ad.qtDeployer.PluginsPath(),
-      targetRoot: "plugins",
-      isLddDependency: true,
-    }
-  }()
+  ad.deployLibrary(ad.qtDeployer.PluginsPath(), relpath, "plugins")
 }
 
 func (ad *AppDeployer) deployQmlImports() error {
