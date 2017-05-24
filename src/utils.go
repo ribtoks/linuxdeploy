@@ -46,7 +46,7 @@ func copyFile(src, dst string) (err error) {
 }
 
 func ensureDirExists(fullpath string) (err error) {
-  log.Printf(fullpath)
+  log.Printf("Ensure directory exists for file %v", fullpath)
   dirpath := path.Dir(fullpath)
   err = os.MkdirAll(dirpath, os.ModePerm)
   if err != nil {
