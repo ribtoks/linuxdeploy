@@ -176,15 +176,19 @@ func (ad *AppDeployer) processCopyRequest(copyRequest *DeployRequest) {
       ad.qtChannel <- qtRequest
     }(copyRequest)
 
-    ad.waitGroup.Add(1)
-    go func(fullpath string) {
-      ad.rpathChannel <- fullpath
-    }(destinationPath)
+    ad.changeRPath(destinationPath)
   } else {
     log.Println(err)
   }
 
   // TODO: submit to strip/patchelf/etc. if copyRequest.isLddDependency
+}
+
+func (ad *AppDeployer) changeRPath(fullpath string) {
+  ad.waitGroup.Add(1)
+  go func() {
+    ad.rpathChannel <- fullpath
+  }()
 }
 
 // copies one file
