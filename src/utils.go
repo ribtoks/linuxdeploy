@@ -107,13 +107,17 @@ func replaceQtPathVariable(buffer []byte, varname []byte, replacement []byte) {
   }
 
   nextIndex := len(varname) + index
+  log.Printf("Start found at %v", nextIndex)
+
   endIndex := bytes.IndexByte(buffer[nextIndex:], byte(0))
   if endIndex == -1 {
     log.Printf("End not found for %v when replacing Qt Path", varname)
     return
   }
 
-  if (endIndex - nextIndex) < len(replacement) {
+  log.Printf("End found at: %v", endIndex + nextIndex)
+
+  if endIndex < len(replacement) {
     log.Printf("Cannot exceed length when replacing %v in Qt Path", varname)
     return
   }
@@ -121,6 +125,7 @@ func replaceQtPathVariable(buffer []byte, varname []byte, replacement []byte) {
   i := nextIndex
   j := 0
   replacementSize := len(replacement)
+  endIndex += nextIndex
 
   for (i < endIndex) && (j < replacementSize) {
     buffer[i] = replacement[j]
@@ -129,8 +134,9 @@ func replaceQtPathVariable(buffer []byte, varname []byte, replacement []byte) {
   }
 
   // pad with zeroes
-  for (i < endIndex) {
+  for i < endIndex {
     buffer[i] = byte(0)
+    i++
   }
 
   log.Printf("Replaced %v to %v for Qt Path", varname, replacement)
