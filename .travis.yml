@@ -11,7 +11,31 @@ git:
 
 env:
 
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+    packages:
+    - gcc-5
+    - g++-5
+
+install:
+  - sudo apt-get install qt5-default
+  - export CXX="g++-5" CC="gcc-5"
+
+before_script:
+  - export COMPILER=g++-5
+  - g++ --version
+  - ulimit -c unlimited -S       # enable core dumps
+
 script:
   - cd src/
   - go build -o linuxdeploy
   - go test -v
+  - cd ../tests/TestLib
+  - qmake "CONFIG+=debug" TestLib.pro
+  - make
+  - cd ../TestApp
+  - qmake "CONFIG+=debug" TestApp.pro
+  - make
+  - ./TestApp

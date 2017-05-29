@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>main.qml</file>
+        <file>delete.svg</file>
+    </qresource>
+</RCC>
