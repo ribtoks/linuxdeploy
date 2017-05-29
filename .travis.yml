@@ -48,3 +48,6 @@ script:
   - ./linuxdeploy -exe ../tests/TestApp/TestApp -appdir TestApp.AppDir -overwrite -libs ../tests/TestLib/ -qmldir ../tests/TestApp/
   - cd TestApp.AppDir
   - ./TestApp
+
+after_failure:
+  - cat linuxdeploy.log

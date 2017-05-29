@@ -139,7 +139,7 @@ func replaceInBuffer(buffer, key, replacement []byte) {
     i++
   }
 
-  log.Printf("Replaced %v to %v", key, replacement)
+  log.Printf("Replaced \"%s\" %v to \"%s\" %v", key, key, replacement, replacement)
 }
 
 func replaceVariable(buffer []byte, varname, varvalue string) {
