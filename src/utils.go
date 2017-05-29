@@ -99,26 +99,26 @@ func parseLddOutputLine(line string) (string, string, error) {
   return libname, libpath, nil
 }
 
-func replaceQtPathVariable(buffer []byte, varname []byte, replacement []byte) {
-  index := bytes.Index(buffer, varname)
+func replaceInBuffer(buffer []byte, key []byte, replacement []byte) {
+  index := bytes.Index(buffer, key)
   if index == -1 {
-    log.Printf("Not found %v when replacing Qt Path", varname)
+    log.Printf("Not found \"%s\" %v when replacing", key, key)
     return
   }
 
-  nextIndex := len(varname) + index
-  log.Printf("Start found at %v", nextIndex)
+  nextIndex := len(key) + index
+  log.Printf("Start of %s found at %v", key, nextIndex)
 
   endIndex := bytes.IndexByte(buffer[nextIndex:], byte(0))
   if endIndex == -1 {
-    log.Printf("End not found for %v when replacing Qt Path", varname)
+    log.Printf("End not found for %s (%v) when replacing", key, key)
     return
   }
 
-  log.Printf("End found at: %v", endIndex + nextIndex)
+  log.Printf("Replacement End found at: %v", endIndex + nextIndex)
 
   if endIndex < len(replacement) {
-    log.Printf("Cannot exceed length when replacing %v in Qt Path", varname)
+    log.Printf("Cannot exceed length when replacing %s", key)
     return
   }
 
@@ -139,5 +139,5 @@ func replaceQtPathVariable(buffer []byte, varname []byte, replacement []byte) {
     i++
   }
 
-  log.Printf("Replaced %v to %v for Qt Path", varname, replacement)
+  log.Printf("Replaced %v to %v", key, replacement)
 }
