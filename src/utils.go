@@ -31,15 +31,19 @@ func executablePath() string {
 }
 
 func copyFile(src, dst string) (err error) {
+  fi, err := os.Stat(src)
+  if err != nil { return err }
+  sourceMode := fi.Mode()
+
   in, err := os.Open(src)
   if err != nil {
     log.Printf("Failed to open source: %v", err)
-    return
+    return err
   }
 
   defer in.Close()
 
-  out, err := os.Create(dst)
+  out, err := os.OpenFile(dst, os.O_RDWR | os.O_TRUNC | os.O_CREATE, sourceMode)
   if err != nil {
     log.Printf("Failed to create destination: %v", err)
     return
