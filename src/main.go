@@ -90,7 +90,7 @@ func main() {
     copyChannel: make(chan *DeployRequest),
     rpathChannel: make(chan string),
     stripChannel: make(chan string),
-    qtChannel: make(chan *DeployRequest),
+    qtChannel: make(chan string),
 
     qtDeployer: &QtDeployer{
       qmakePath: resolveQMake(),

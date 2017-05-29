@@ -61,7 +61,7 @@ type AppDeployer struct {
   copyChannel chan *DeployRequest
   stripChannel chan string
   rpathChannel chan string
-  qtChannel chan *DeployRequest
+  qtChannel chan string
 
   qtDeployer *QtDeployer
   additionalLibPaths []string
@@ -171,11 +171,7 @@ func (ad *AppDeployer) processCopyRequest(copyRequest *DeployRequest) {
   err := copyFile(sourcePath, destinationPath)
 
   if err == nil && copyRequest.isLddDependency {
-    ad.waitGroup.Add(1)
-    go func(qtRequest *DeployRequest) {
-      ad.qtChannel <- qtRequest
-    }(copyRequest)
-
+    ad.handleQtLibrary(destinationPath)
     ad.changeRPath(destinationPath)
   } else {
     log.Println(err)
@@ -188,6 +184,13 @@ func (ad *AppDeployer) changeRPath(fullpath string) {
   ad.waitGroup.Add(1)
   go func() {
     ad.rpathChannel <- fullpath
+  }()
+}
+
+func (ad *AppDeployer) handleQtLibrary(fullpath string) {
+  ad.waitGroup.Add(1)
+  go func() {
+    ad.qtChannel <- fullpath
   }()
 }
 

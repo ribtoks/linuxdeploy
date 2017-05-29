@@ -19,6 +19,7 @@ import (
   "strings"
   "os"
   "os/exec"
+  "io/ioutil"
   "errors"
   "path/filepath"
   "encoding/json"
@@ -158,17 +159,18 @@ func (ad *AppDeployer) processQtLibs() {
     go ad.deployQmlImports()
   }
 
-  for request := range ad.qtChannel {
-    ad.processQtLibrary(request)
+  for libraryPath := range ad.qtChannel {
+    ad.processQtLibrary(libraryPath)
     ad.waitGroup.Done()
   }
 }
 
-func (ad *AppDeployer) processQtLibrary(request *DeployRequest) {
-  libname := strings.ToLower(request.Basename())
+func (ad *AppDeployer) processQtLibrary(libraryPath string) {
+  libraryBasename := filepath.Base(libraryPath)
+  libname := strings.ToLower(libraryBasename)
 
   if !strings.HasPrefix(libname, "libqt") { return }
-  log.Printf("Inspecting Qt lib: %v", request.Basename())
+  log.Printf("Inspecting Qt lib: %v", libraryBasename)
 
   if strings.HasPrefix(libname, "libqt5gui") {
     ad.deployQtPlugin("platforms/libqxcb.so")
@@ -198,6 +200,9 @@ func (ad *AppDeployer) processQtLibrary(request *DeployRequest) {
     ad.copyOnce(ad.qtDeployer.LibExecsPath(), "QtWebEngineProcess", "libexecs")
     ad.copyRecursively(ad.qtDeployer.DataPath(), "resources", ".")
     ad.copyRecursively(ad.qtDeployer.TranslationsPath(), "qtwebengine_locales", "translations")
+  } else
+  if strings.HasPrefix(libname, "libqt5core") {
+    go patchQtCore(libraryPath)
   }
 }
 
@@ -292,4 +297,60 @@ func (ad *AppDeployer) processQmlImportsJson(jsonRaw []byte) (err error) {
   }
 
   return nil
+}
+
+func patchQtCore(libraryPath string) {
+  log.Printf("Patching libQt5Core at path %v", libraryPath)
+  err := doPatchQtCore(libraryPath)
+  if err != nil {
+    log.Printf("QtCore patching failed! %v", err)
+  }
+}
+
+func doPatchQtCore(path string) error {
+  fi, err := os.Stat(path)
+  if err != nil { return err }
+
+  originalMode := fi.Mode()
+
+  contents, err := ioutil.ReadFile(path)
+  if err != nil { return err }
+
+  // this list originates from https://github.com/probonopd/linuxdeployqt
+  replaceVariable(contents, "qt_prfxpath", ".");
+  replaceVariable(contents, "qt_adatpath", ".");
+  replaceVariable(contents, "qt_docspath", "doc");
+  replaceVariable(contents, "qt_hdrspath", "include");
+  replaceVariable(contents, "qt_libspath", "lib");
+  replaceVariable(contents, "qt_lbexpath", "libexec");
+  replaceVariable(contents, "qt_binspath", "bin");
+  replaceVariable(contents, "qt_plugpath", "plugins");
+  replaceVariable(contents, "qt_impspath", "imports");
+  replaceVariable(contents, "qt_qml2path", "qml");
+  replaceVariable(contents, "qt_datapath", ".");
+  replaceVariable(contents, "qt_trnspath", "translations");
+  replaceVariable(contents, "qt_xmplpath", "examples");
+  replaceVariable(contents, "qt_demopath", "demos");
+  replaceVariable(contents, "qt_tstspath", "tests");
+  replaceVariable(contents, "qt_hpfxpath", ".");
+  replaceVariable(contents, "qt_hbinpath", "bin");
+  replaceVariable(contents, "qt_hdatpath", ".");
+  replaceVariable(contents, "qt_stngpath", "."); // e.g., /opt/qt53/etc/xdg; does it load Trolltech.conf from there?
+
+  /* Qt on Arch Linux comes with more hardcoded paths
+  * https://github.com/probonopd/linuxdeployqt/issues/98
+  replaceVariable(contents, "lib/qt/libexec", "libexec");
+  replaceVariable(contents, "lib/qt/plugins", "plugins");
+  replaceVariable(contents, "lib/qt/imports", "imports");
+  replaceVariable(contents, "lib/qt/qml", "qml");
+  replaceVariable(contents, "lib/qt", "");
+  replaceVariable(contents, "share/doc/qt", "doc");
+  replaceVariable(contents, "include/qt", "include");
+  replaceVariable(contents, "share/qt", "");
+  replaceVariable(contents, "share/qt/translations", "translations");
+  replaceVariable(contents, "share/doc/qt/examples", "examples");
+  */
+
+  err = ioutil.WriteFile(path, contents, originalMode)
+  return err
 }

@@ -99,7 +99,7 @@ func parseLddOutputLine(line string) (string, string, error) {
   return libname, libpath, nil
 }
 
-func replaceInBuffer(buffer []byte, key []byte, replacement []byte) {
+func replaceInBuffer(buffer, key, replacement []byte) {
   index := bytes.Index(buffer, key)
   if index == -1 {
     log.Printf("Not found \"%s\" %v when replacing", key, key)
@@ -140,4 +140,8 @@ func replaceInBuffer(buffer []byte, key []byte, replacement []byte) {
   }
 
   log.Printf("Replaced %v to %v", key, replacement)
+}
+
+func replaceVariable(buffer []byte, varname, varvalue string) {
+  replaceInBuffer(buffer, []byte(varname), []byte(varvalue))
 }
