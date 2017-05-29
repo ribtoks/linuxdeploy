@@ -25,4 +25,11 @@ Window {
         anchors.centerIn: parent
         color: "#ffffff"
     }
+
+    Timer {
+        interval: 2000
+        repeat: false
+        onTriggered: Qt.quit()
+        running: true
+    }
 }
