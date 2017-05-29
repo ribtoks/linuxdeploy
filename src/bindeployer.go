@@ -144,7 +144,7 @@ func (ad *AppDeployer) processRunPathChangeRequests() {
 
 func changeRPath(fullpath, destinationRoot string) {
   libdir := filepath.Dir(fullpath)
-  relativePath, err := filepath.Rel(destinationRoot, libdir)
+  relativePath, err := filepath.Rel(libdir, destinationRoot)
   if err != nil {
     log.Println(err)
     return

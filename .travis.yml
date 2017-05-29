@@ -47,7 +47,9 @@ script:
   - cd ../../src
   - ./linuxdeploy -exe ../tests/TestApp/TestApp -appdir TestApp.AppDir -overwrite -libs ../tests/TestLib/ -qmldir ../tests/TestApp/
   - cd TestApp.AppDir
+  - chmod +x TestApp
   - ./TestApp
 
 after_failure:
+  - cd ../src
   - cat linuxdeploy.log
