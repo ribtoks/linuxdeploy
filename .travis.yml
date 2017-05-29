@@ -42,6 +42,8 @@ before_script:
   - cd ../
 
 script:
+  - xpra start :42 # start the display to have it ready before needed
+  - export DISPLAY=:42 # for the Qml app to start
   - cd src/
   - go build -o linuxdeploy
   - go test -v
