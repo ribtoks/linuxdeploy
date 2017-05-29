@@ -14,3 +14,4 @@ env:
 script:
   - cd src/
   - go build -o linuxdeploy
+  - go test -v
