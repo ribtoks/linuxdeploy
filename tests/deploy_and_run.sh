@@ -8,9 +8,16 @@ APP_DIR=TestApp.AppDir
 
 rc=$?; if [[ $rc != 0 ]]; then exit 1; fi
 
+echo "Deployed all needed libraries. Trying to launch..."
+
 pushd $APP_DIR
 
+unset QT_PLUGIN_PATH
 unset LD_LIBRARY_PATH
-export LD_LIBRARY_PATH=""
+unset QTDIR
 
 LD_DEBUG=libs ./TestApp
+
+popd # appdir
+
+popd # src

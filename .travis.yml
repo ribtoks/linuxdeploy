@@ -60,4 +60,4 @@ script:
   - tests/deploy_and_run.sh
 
 after_failure:
-  - cat linuxdeploy.log
+  - cat src/linuxdeploy.log
