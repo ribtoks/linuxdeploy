@@ -44,4 +44,7 @@ script:
   - cd ../TestApp
   - qmake "CONFIG+=debug" TestApp.pro
   - make
+  - cd ../../src
+  - ./linuxdeploy -exe ../tests/TestApp/TestApp -appdir TestApp.AppDir -overwrite -libs ../tests/TestLib/ -qmldir ../tests/TestApp/
+  - cd TestApp.AppDir
   - ./TestApp
