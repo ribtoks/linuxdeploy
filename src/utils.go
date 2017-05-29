@@ -115,7 +115,7 @@ func replaceInBuffer(buffer, key, replacement []byte) {
     return
   }
 
-  log.Printf("Replacement End found at: %v", endIndex + nextIndex)
+  log.Printf("Replacement End found at %v", endIndex + nextIndex)
 
   if endIndex < len(replacement) {
     log.Printf("Cannot exceed length when replacing %s", key)
@@ -126,6 +126,8 @@ func replaceInBuffer(buffer, key, replacement []byte) {
   j := 0
   replacementSize := len(replacement)
   endIndex += nextIndex
+
+  log.Printf("Replacement previous value is %s", buffer[nextIndex:endIndex])
 
   for (i < endIndex) && (j < replacementSize) {
     buffer[i] = replacement[j]
