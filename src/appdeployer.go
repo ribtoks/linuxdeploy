@@ -188,6 +188,8 @@ func (ad *AppDeployer) changeRPath(fullpath string) {
 }
 
 func (ad *AppDeployer) handleQtLibrary(fullpath string) {
+  if !ad.qtDeployer.qtEnvironmentSet { return }
+
   ad.waitGroup.Add(1)
   go func() {
     ad.qtChannel <- fullpath

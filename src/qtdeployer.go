@@ -154,7 +154,7 @@ func (ad *AppDeployer) processQtLibs() {
     return
   }
 
-  if (!ad.qtDeployer.qmlImportsDeployed) {
+  if !ad.qtDeployer.qmlImportsDeployed {
     ad.qtDeployer.qmlImportsDeployed = true
     go ad.deployQmlImports()
   }

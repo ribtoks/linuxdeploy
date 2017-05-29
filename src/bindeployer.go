@@ -129,15 +129,20 @@ func (ad *AppDeployer) resolveLibrary(libname string) (foundPath string) {
 }
 
 func (ad *AppDeployer) processRunPathChangeRequests() {
+  patchelfMissing := false
+
   if _, err := exec.LookPath("patchelf"); err != nil {
     log.Printf("Patchelf cannot be found!")
-    return
+    patchelfMissing = true
   }
 
   destinationRoot := ad.destinationPath
 
   for fullpath := range ad.rpathChannel {
-    changeRPath(fullpath, destinationRoot)
+    if !patchelfMissing {
+      changeRPath(fullpath, destinationRoot)
+    }
+
     ad.waitGroup.Done()
   }
 }

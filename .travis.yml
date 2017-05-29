@@ -35,7 +35,10 @@ before_script:
   - ulimit -c unlimited -S       # enable core dumps
   - git clone -o 44b7f9583ffe0ee0 https://github.com/NixOS/patchelf.git
   - cd patchelf
-  - ./configure  && make && sudo make install
+  - bash ./bootstrap.sh
+  - ./configure
+  - make -j2
+  - sudo make install
   - cd ../
 
 script:
