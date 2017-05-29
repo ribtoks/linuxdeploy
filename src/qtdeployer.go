@@ -317,25 +317,25 @@ func doPatchQtCore(path string) error {
   if err != nil { return err }
 
   // this list originates from https://github.com/probonopd/linuxdeployqt
-  replaceVariable(contents, "qt_prfxpath", ".");
-  replaceVariable(contents, "qt_adatpath", ".");
-  replaceVariable(contents, "qt_docspath", "doc");
-  replaceVariable(contents, "qt_hdrspath", "include");
-  replaceVariable(contents, "qt_libspath", "lib");
-  replaceVariable(contents, "qt_lbexpath", "libexec");
-  replaceVariable(contents, "qt_binspath", "bin");
-  replaceVariable(contents, "qt_plugpath", "plugins");
-  replaceVariable(contents, "qt_impspath", "imports");
-  replaceVariable(contents, "qt_qml2path", "qml");
-  replaceVariable(contents, "qt_datapath", ".");
-  replaceVariable(contents, "qt_trnspath", "translations");
-  replaceVariable(contents, "qt_xmplpath", "examples");
-  replaceVariable(contents, "qt_demopath", "demos");
-  replaceVariable(contents, "qt_tstspath", "tests");
-  replaceVariable(contents, "qt_hpfxpath", ".");
-  replaceVariable(contents, "qt_hbinpath", "bin");
-  replaceVariable(contents, "qt_hdatpath", ".");
-  replaceVariable(contents, "qt_stngpath", "."); // e.g., /opt/qt53/etc/xdg; does it load Trolltech.conf from there?
+  replaceVariable(contents, "qt_prfxpath=", ".");
+  replaceVariable(contents, "qt_adatpath=", ".");
+  replaceVariable(contents, "qt_docspath=", "doc");
+  replaceVariable(contents, "qt_hdrspath=", "include");
+  replaceVariable(contents, "qt_libspath=", "lib");
+  replaceVariable(contents, "qt_lbexpath=", "libexec");
+  replaceVariable(contents, "qt_binspath=", "bin");
+  replaceVariable(contents, "qt_plugpath=", "plugins");
+  replaceVariable(contents, "qt_impspath=", "imports");
+  replaceVariable(contents, "qt_qml2path=", "qml");
+  replaceVariable(contents, "qt_datapath=", ".");
+  replaceVariable(contents, "qt_trnspath=", "translations");
+  replaceVariable(contents, "qt_xmplpath=", "examples");
+  replaceVariable(contents, "qt_demopath=", "demos");
+  replaceVariable(contents, "qt_tstspath=", "tests");
+  replaceVariable(contents, "qt_hpfxpath=", ".");
+  replaceVariable(contents, "qt_hbinpath=", "bin");
+  replaceVariable(contents, "qt_hdatpath=", ".");
+  replaceVariable(contents, "qt_stngpath=", "."); // e.g., /opt/qt53/etc/xdg; does it load Trolltech.conf from there?
 
   /* Qt on Arch Linux comes with more hardcoded paths
   * https://github.com/probonopd/linuxdeployqt/issues/98
