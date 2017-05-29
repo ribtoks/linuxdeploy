@@ -19,8 +19,14 @@ addons:
     - gcc-5
     - g++-5
 
+before_install:
+  - sudo add-apt-repository ppa:beineri/opt-qt551-trusty -y
+  - sudo apt-get update -qq
+
 install:
-  - sudo apt-get install qt5-default
+  - sudo apt-get install -qq qt55base; source /opt/qt55/bin/qt55-env.sh
+  - sudo apt-get install qt55base qt55quickcontrols qt55svg qt55declarative
+  - sudo unlink /usr/bin/g++ && sudo ln -s /usr/bin/g++-5 /usr/bin/g++
   - export CXX="g++-5" CC="gcc-5"
 
 before_script:
