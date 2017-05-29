@@ -33,6 +33,10 @@ before_script:
   - export COMPILER=g++-5
   - g++ --version
   - ulimit -c unlimited -S       # enable core dumps
+  - git clone -o 44b7f9583ffe0ee0 https://github.com/NixOS/patchelf.git
+  - cd patchelf
+  - ./configure  && make && sudo make install
+  - cd ../
 
 script:
   - cd src/
