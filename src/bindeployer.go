@@ -28,17 +28,23 @@ func (ad *AppDeployer) processLibs() {
     ad.processLibrary(request)
     ad.waitGroup.Done()
   }
+  
+  log.Println("Libraries processing finished")
 }
 
 func (ad *AppDeployer) processLibrary(request *DeployRequest) {
   libpath := request.FullPath()
+  
+  if ad.canSkipLibrary(libpath) {
+    log.Printf("Skipping library: %v", libpath)
+    return
+  }
+  
   log.Printf("Processing library: %v", libpath)
-
-  if ad.isLibraryDeployed(libpath) { return }
 
   dependencies, err := ad.findLddDependencies(libpath)
   if err != nil {
-    log.Printf("Error while dependency check: %v", err)
+    log.Printf("Error while dependency check for %v: %v", libpath, err)
     return
   }
 
@@ -54,6 +60,17 @@ func (ad *AppDeployer) processLibrary(request *DeployRequest) {
       ad.deployLibrary("", dependPath, "lib")
     }
   }
+}
+               
+func (ad *AppDeployer) canSkipLibrary(libpath string) bool {
+  canSkip := false  
+  if strings.HasPrefix(libpath, "linux-vdso.so") { 
+    canSkip = true 
+  } else if ad.isLibraryDeployed(libpath) { 
+    canSkip = true 
+  }
+  
+  return canSkip
 }
 
 func (ad *AppDeployer) findLddDependencies(filepath string) ([]string, error) {
@@ -129,22 +146,26 @@ func (ad *AppDeployer) resolveLibrary(libname string) (foundPath string) {
 }
 
 func (ad *AppDeployer) processRunPathChangeRequests() {
-  patchelfMissing := false
+  patchelfAvailable := true
 
   if _, err := exec.LookPath("patchelf"); err != nil {
     log.Printf("Patchelf cannot be found!")
-    patchelfMissing = true
+    patchelfAvailable = false
   }
 
   destinationRoot := ad.destinationPath
 
   for fullpath := range ad.rpathChannel {
-    if !patchelfMissing {
+    if patchelfAvailable {
       changeRPath(fullpath, destinationRoot)
     }
 
+    ad.stripBinary(fullpath)
+
     ad.waitGroup.Done()
   }
+
+  log.Printf("RPath change requests processing finished")
 }
 
 func changeRPath(fullpath, destinationRoot string) {
@@ -160,6 +181,43 @@ func changeRPath(fullpath, destinationRoot string) {
 
   cmd := exec.Command("patchelf", "--set-rpath", rpath, fullpath)
   if err = cmd.Run(); err != nil {
+    log.Println(err)
+  }
+}
+
+func (ad *AppDeployer) stripBinary(fullpath string) {
+  if *stripFlag {
+    ad.waitGroup.Add(1)
+    go func() {
+      ad.stripChannel <- fullpath
+    }()
+  }
+}
+
+func (ad *AppDeployer) processStripRequests() {
+  stripAvailable := true
+
+  if _, err := exec.LookPath("strip"); err != nil {
+    log.Printf("Strip cannot be found!")
+    stripAvailable = false
+  }
+
+  for fullpath := range ad.stripChannel {
+    if stripAvailable {
+      stripBinary(fullpath)
+    }
+
+    ad.waitGroup.Done()
+  }
+
+  log.Printf("Strip requests processing finished")
+}
+
+func stripBinary(fullpath string) {
+  log.Printf("Running strip on %v", fullpath)
+
+  cmd := exec.Command("strip", fullpath)
+  if err := cmd.Run(); err != nil {
     log.Println(err)
   }
 }

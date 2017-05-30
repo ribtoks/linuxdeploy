@@ -59,6 +59,7 @@ type QtDeployer struct {
   qtEnv map[QMakeKey]string
   qmlImportDirs []string
   qmlImportsDeployed bool
+  privateWidgetsDeployed bool
   qtEnvironmentSet bool
 }
 
@@ -161,20 +162,25 @@ func (ad *AppDeployer) processQtLibs() {
 
   for libraryPath := range ad.qtChannel {
     ad.processQtLibrary(libraryPath)
+    // rpath should be changed for all qt libs
+    ad.changeRPath(libraryPath)
+
     ad.waitGroup.Done()
   }
+
+  log.Printf("Qt libraries processing finished")
 }
 
 func (ad *AppDeployer) processQtLibrary(libraryPath string) {
   libraryBasename := filepath.Base(libraryPath)
   libname := strings.ToLower(libraryBasename)
 
-  if !strings.HasPrefix(libname, "libqt") { return }
+  if !strings.HasPrefix(libname, "libqt") { log.Fatal("Can only accept Qt libraries") }
   log.Printf("Inspecting Qt lib: %v", libraryBasename)
 
   if strings.HasPrefix(libname, "libqt5gui") {
     ad.deployQtPlugin("platforms/libqxcb.so")
-    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "imageformats", "plugins", DEPLOY_LIBRARIES)
+    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "imageformats", "plugins", DEPLOY_LIBRARIES, FIX_RPATH)
   } else
   if strings.HasPrefix(libname, "libqt5svg") {
     ad.deployQtPlugin("iconengines/libqsvgicon.so")
@@ -184,34 +190,61 @@ func (ad *AppDeployer) processQtLibrary(libraryPath string) {
   } else
   if strings.HasPrefix(libname, "libqt5opengl") ||
     strings.HasPrefix(libname, "libqt5xcbqpa") {
-    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "xcbglintegrations", "plugins", DEPLOY_LIBRARIES)
+    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "xcbglintegrations", "plugins", DEPLOY_LIBRARIES, FIX_RPATH)
   } else
   if strings.HasPrefix(libname, "libqt5network") {
-    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "bearer", "plugins", DEPLOY_LIBRARIES)
+    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "bearer", "plugins", DEPLOY_LIBRARIES, FIX_RPATH)
   } else
   if strings.HasPrefix(libname, "libqt5sql") {
-    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "sqldrivers", "plugins", DEPLOY_LIBRARIES)
+    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "sqldrivers", "plugins", DEPLOY_LIBRARIES, FIX_RPATH)
   } else
   if strings.HasPrefix(libname, "libqt5multimedia") {
-    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "mediaservice", "plugins", DEPLOY_LIBRARIES)
-    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "audio", "plugins", DEPLOY_LIBRARIES)
+    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "mediaservice", "plugins", DEPLOY_LIBRARIES, FIX_RPATH)
+    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "audio", "plugins", DEPLOY_LIBRARIES, FIX_RPATH)
   } else
   if strings.HasPrefix(libname, "libqt5webenginecore") {
-    ad.copyOnce(ad.qtDeployer.LibExecsPath(), "QtWebEngineProcess", "libexecs")
+    ad.copyQtDep(ad.qtDeployer.LibExecsPath(), "QtWebEngineProcess", "libexecs")
     ad.copyRecursively(ad.qtDeployer.DataPath(), "resources", ".")
     ad.copyRecursively(ad.qtDeployer.TranslationsPath(), "qtwebengine_locales", "translations")
   } else
   if strings.HasPrefix(libname, "libqt5core") {
-    go patchQtCore(libraryPath)
+    go ad.patchQtCore(libraryPath)
   }
+}
+
+// copies one file
+func (ad *AppDeployer) copyQtDep(sourceRoot, sourcePath, targetPath string) error {
+  path := filepath.Join(sourceRoot, sourcePath)
+  log.Printf("Copy once %v into %v", path, targetPath)
+  relativePath, err := filepath.Rel(sourceRoot, path)
+  if err != nil {
+    log.Println(err)
+  }
+
+  ad.waitGroup.Add(1)
+  go func() {
+    ad.copyChannel <- &DeployRequest{
+      sourceRoot: sourceRoot,
+      sourcePath: relativePath,
+      targetPath: targetPath,
+      isLddDependency: false,
+      requiresRunPathFix: true,
+    }
+  }()
+
+  return err
 }
 
 func (ad *AppDeployer) deployQtPlugin(relpath string) {
   log.Printf("Deploying additional Qt plugin: %v", relpath)
-  ad.deployLibrary(ad.qtDeployer.PluginsPath(), relpath, "plugins")
+  ad.deployLibraryEx(ad.qtDeployer.PluginsPath(), relpath, "plugins", FIX_RPATH)
 }
 
 func (ad *AppDeployer) deployQmlImports() error {
+  // rescue agains premature finish of the main loop
+  ad.waitGroup.Add(1)
+  defer ad.waitGroup.Done()
+  
   log.Printf("Processing QML imports from %v", ad.qtDeployer.qmlImportDirs)
 
   scannerPath := filepath.Join(ad.qtDeployer.BinPath(), "qmlimportscanner")
@@ -286,28 +319,33 @@ func (ad *AppDeployer) processQmlImportsJson(jsonRaw []byte) (err error) {
       continue
     }
 
-    if qmlImport.Name == "QtQuick.Controls" {
+    if (qmlImport.Name == "QtQuick.Controls") && !ad.qtDeployer.privateWidgetsDeployed {
+      ad.qtDeployer.privateWidgetsDeployed = true
       log.Printf("Deploying private widgets for QtQuick.Controls")
-      ad.deployRecursively(sourceRoot, "QtQuick/PrivateWidgets", "qml", DEPLOY_EVERYTHING)
+      ad.deployRecursively(sourceRoot, "QtQuick/PrivateWidgets", "qml", DEPLOY_EVERYTHING, FIX_RPATH)
     }
 
     log.Printf("Deploying QML import %v", qmlImport.Path)
     ad.qtDeployer.accountQmlImport(qmlImport.Path)
-    ad.deployRecursively(sourceRoot, relativePath, "qml", DEPLOY_EVERYTHING)
+    ad.deployRecursively(sourceRoot, relativePath, "qml", DEPLOY_EVERYTHING, FIX_RPATH)
   }
 
   return nil
 }
 
-func patchQtCore(libraryPath string) {
+func (ad *AppDeployer) patchQtCore(libraryPath string) {
+  // rescue agains premature finish of the main loop
+  ad.waitGroup.Add(1)
+  defer ad.waitGroup.Done()
+  
   log.Printf("Patching libQt5Core at path %v", libraryPath)
-  err := doPatchQtCore(libraryPath)
+  err := patchQtCore(libraryPath)
   if err != nil {
     log.Printf("QtCore patching failed! %v", err)
   }
 }
 
-func doPatchQtCore(path string) error {
+func patchQtCore(path string) error {
   fi, err := os.Stat(path)
   if err != nil { return err }
 

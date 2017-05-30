@@ -2,6 +2,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <testlib.h>
+#include <iostream>
 
 int main(int argc, char *argv[])
 {
@@ -14,5 +15,7 @@ int main(int argc, char *argv[])
 
     engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
 
+    std::cout << "Loaded main.qml" << std::endl;
+    
     return app.exec();
 }

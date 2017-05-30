@@ -20,6 +20,7 @@ import (
   "strings"
   "sync"
   "path/filepath"
+  "time"
 )
 
 const (
@@ -28,6 +29,8 @@ const (
   DEPLOY_LIBRARIES = true
   LDD_DEPENDENCY = true
   ORDINARY_FILE = false
+  FIX_RPATH = true
+  LEAVE_RPATH = false
 )
 
 type DeployRequest struct {
@@ -35,6 +38,7 @@ type DeployRequest struct {
   sourceRoot string // if empty then sourcePath is absolute path
   targetPath string // target *relative* path
   isLddDependency bool // if true, check ldd dependencies
+  requiresRunPathFix bool // true for all qt plugins
 }
 
 func (dp *DeployRequest) FullPath() string {
@@ -79,6 +83,7 @@ func (ad *AppDeployer) DeployApp() {
 
   go ad.processCopyRequests()
   go ad.processRunPathChangeRequests()
+  go ad.processStripRequests()
   go ad.processQtLibs()
 
   log.Printf("Waiting for processing to finish")
@@ -89,9 +94,13 @@ func (ad *AppDeployer) DeployApp() {
   close(ad.copyChannel)
   close(ad.qtChannel)
   close(ad.rpathChannel)
+  close(ad.stripChannel)
+  
+  // let channels goroutines print end of work confirmation
+  time.Sleep(500 * time.Millisecond)
 }
 
-func (ad *AppDeployer) deployLibrary(sourceRoot, sourcePath, targetPath string) {
+func (ad *AppDeployer) deployLibraryEx(sourceRoot, sourcePath, targetPath string, requiresRunPathFix bool) {
   ad.waitGroup.Add(1)
   go func() {
     ad.libsChannel <- &DeployRequest{
@@ -99,11 +108,16 @@ func (ad *AppDeployer) deployLibrary(sourceRoot, sourcePath, targetPath string) 
       sourcePath: sourcePath,
       targetPath: targetPath,
       isLddDependency: true,
+      requiresRunPathFix: requiresRunPathFix,
     }
   }()
 }
 
-func (ad *AppDeployer) copyFile(sourceRoot, sourcePath, targetPath string, isLddDependency bool) {
+func (ad *AppDeployer) deployLibrary(sourceRoot, sourcePath, targetPath string) {
+  ad.deployLibraryEx(sourceRoot, sourcePath, targetPath, false)
+}
+
+func (ad *AppDeployer) copyFileEx(sourceRoot, sourcePath, targetPath string, isLddDependency, requiresRunPathFix bool) {
   ad.waitGroup.Add(1)
   go func() {
     ad.copyChannel <- &DeployRequest{
@@ -111,8 +125,13 @@ func (ad *AppDeployer) copyFile(sourceRoot, sourcePath, targetPath string, isLdd
       sourcePath: sourcePath,
       targetPath: targetPath,
       isLddDependency: isLddDependency,
+      requiresRunPathFix: requiresRunPathFix,
     }
   }()
+}
+
+func (ad *AppDeployer) copyFile(sourceRoot, sourcePath, targetPath string, isLddDependency bool) {
+  ad.copyFileEx(sourceRoot, sourcePath, targetPath, isLddDependency, false)
 }
 
 func (ad *AppDeployer) accountLibrary(libpath string) {
@@ -130,7 +149,7 @@ func (ad *AppDeployer) processMainExe() {
   if err != nil { log.Fatal(err) }
 
   ad.accountLibrary(ad.targetExePath)
-  ad.copyFile("", ad.targetExePath, ".", LDD_DEPENDENCY)
+  ad.copyFileEx("", ad.targetExePath, ".", LDD_DEPENDENCY, FIX_RPATH)
 
   for _, dependPath := range dependencies {
     if !ad.isLibraryDeployed(dependPath) {
@@ -142,7 +161,8 @@ func (ad *AppDeployer) processMainExe() {
 
   go ad.processLibs()
 
-  ad.waitGroup.Done()
+  ad.waitGroup.Done()  
+  log.Println("Main exe processing finished")
 }
 
 func (ad *AppDeployer) processCopyRequests() {
@@ -150,6 +170,8 @@ func (ad *AppDeployer) processCopyRequests() {
     ad.processCopyRequest(copyRequest)
     ad.waitGroup.Done()
   }
+
+  log.Printf("Copy requests processing finished")
 }
 
 func (ad *AppDeployer) processCopyRequest(copyRequest *DeployRequest) {
@@ -166,18 +188,29 @@ func (ad *AppDeployer) processCopyRequest(copyRequest *DeployRequest) {
   destinationPath = filepath.Join(ad.destinationPath, destinationPrefix, filepath.Base(copyRequest.sourcePath))
 
   ensureDirExists(destinationPath)
-
-  log.Printf("Copying %v to %v", sourcePath, destinationPath)
   err := copyFile(sourcePath, destinationPath)
 
-  if err == nil && copyRequest.isLddDependency {
-    ad.handleQtLibrary(destinationPath)
-    ad.changeRPath(destinationPath)
-  } else {
-    log.Println(err)
+  if err != nil {
+    log.Printf("Error while copying [%v] to [%v]: %v", sourcePath, destinationPath, err)
+    return
   }
+  
+  log.Printf("Copied [%v] to [%v]", sourcePath, destinationPath)
+  passedOver := false
+  
+  if copyRequest.isLddDependency {
+    libraryBasename := filepath.Base(destinationPath)
+    libname := strings.ToLower(libraryBasename)
 
-  // TODO: submit to strip/patchelf/etc. if copyRequest.isLddDependency
+    if strings.HasPrefix(libname, "libqt") {
+      ad.handleQtLibrary(destinationPath)
+      passedOver = true
+    }
+  }
+  
+  if !passedOver && copyRequest.requiresRunPathFix {
+    ad.changeRPath(destinationPath)
+  }
 }
 
 func (ad *AppDeployer) changeRPath(fullpath string) {
@@ -188,7 +221,10 @@ func (ad *AppDeployer) changeRPath(fullpath string) {
 }
 
 func (ad *AppDeployer) handleQtLibrary(fullpath string) {
-  if !ad.qtDeployer.qtEnvironmentSet { return }
+  if !ad.qtDeployer.qtEnvironmentSet { 
+    log.Println("Qt environment is not set!")
+    return 
+  }
 
   ad.waitGroup.Add(1)
   go func() {
@@ -196,30 +232,12 @@ func (ad *AppDeployer) handleQtLibrary(fullpath string) {
   }()
 }
 
-// copies one file
-func (ad *AppDeployer) copyOnce(sourceRoot, sourcePath, targetPath string) error {
-  path := filepath.Join(sourceRoot, sourcePath)
-  log.Printf("Copying once %v into %v", path, targetPath)
-  relativePath, err := filepath.Rel(sourceRoot, path)
-  if err != nil {
-    log.Println(err)
-  }
-
-  ad.waitGroup.Add(1)
-  go func() {
-    ad.copyChannel <- &DeployRequest{
-      sourceRoot: sourceRoot,
-      sourcePath: relativePath,
-      targetPath: targetPath,
-      isLddDependency: false,
-    }
-  }()
-
-  return err
-}
-
 // copies everything without inspection
 func (ad *AppDeployer) copyRecursively(sourceRoot, sourcePath, targetPath string) error {
+  // rescue agains premature finish of the main loop
+  ad.waitGroup.Add(1)
+  defer ad.waitGroup.Done()
+  
   rootpath := filepath.Join(sourceRoot, sourcePath)
   log.Printf("Copying recursively %v into %v", rootpath, targetPath)
 
@@ -237,7 +255,7 @@ func (ad *AppDeployer) copyRecursively(sourceRoot, sourcePath, targetPath string
       log.Println(err)
     }
 
-    ad.copyFile(sourceRoot, relativePath, targetPath, ORDINARY_FILE)
+    ad.copyFileEx(sourceRoot, relativePath, targetPath, ORDINARY_FILE, LEAVE_RPATH)
 
     return nil
   })
@@ -246,7 +264,11 @@ func (ad *AppDeployer) copyRecursively(sourceRoot, sourcePath, targetPath string
 }
 
 // inspects libraries for dependencies and copies other files
-func (ad *AppDeployer) deployRecursively(sourceRoot, sourcePath, targetPath string, onlyLibraries bool) error {
+func (ad *AppDeployer) deployRecursively(sourceRoot, sourcePath, targetPath string, onlyLibraries, fixRPath bool) error {
+  // rescue agains premature finish of the main loop
+  ad.waitGroup.Add(1)
+  defer ad.waitGroup.Done()
+  
   rootpath := filepath.Join(sourceRoot, sourcePath)
   log.Printf("Deploying recursively %v in %v", sourceRoot, sourcePath)
 
@@ -260,7 +282,7 @@ func (ad *AppDeployer) deployRecursively(sourceRoot, sourcePath, targetPath stri
     }
 
     basename := filepath.Base(path)
-    isLibrary := strings.Contains(basename, ".so")
+    isLibrary := strings.HasPrefix(basename, "lib") && strings.Contains(basename, ".so")
 
     if !isLibrary && onlyLibraries {
       return nil
@@ -272,9 +294,9 @@ func (ad *AppDeployer) deployRecursively(sourceRoot, sourcePath, targetPath stri
     }
 
     if isLibrary {
-      ad.deployLibrary(sourceRoot, relativePath, targetPath)
+      ad.deployLibraryEx(sourceRoot, relativePath, targetPath, fixRPath)
     } else {
-      ad.copyFile(sourceRoot, relativePath, targetPath, ORDINARY_FILE)
+      ad.copyFileEx(sourceRoot, relativePath, targetPath, ORDINARY_FILE, LEAVE_RPATH)
     }
 
     return nil

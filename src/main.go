@@ -53,6 +53,7 @@ var (
   appDirPathFlag = flag.String("appdir", "", "Path to the AppDir (if 'type' is appimage)")
   overwriteFlag = flag.Bool("overwrite", false, "Overwrite output if preset")
   qmakePathFlag = flag.String("qmake", "", "Path to qmake")
+  stripFlag = flag.Bool("strip", false, "Run strip on binaries")
 )
 
 const (
@@ -99,6 +100,7 @@ func main() {
       qtEnv: make(map[QMakeKey]string),
       qmlImportDirs: qmlImports,
       qmlImportsDeployed: false,
+      privateWidgetsDeployed: false,
       qtEnvironmentSet: false,
     },
 

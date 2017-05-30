@@ -31,6 +31,8 @@ func executablePath() string {
 }
 
 func copyFile(src, dst string) (err error) {
+  log.Printf("About to copy file %v to %v", src, dst)
+  
   fi, err := os.Stat(src)
   if err != nil { return err }
   sourceMode := fi.Mode()

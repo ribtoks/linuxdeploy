@@ -1,4 +1,4 @@
-sudo: required
+sudo: true
 dist: trusty
 
 language: go
@@ -10,54 +10,54 @@ git:
   depth: 3
 
 env:
-  global:
-    - DISPLAY=:42
-
-addons:
-  apt:
-    sources:
-    - ubuntu-toolchain-r-test
-    packages:
-    - gcc-5
-    - g++-5
+  - QUICKBUILD=gotests
+  - DEPLOY_TESTS=deploytests
 
 before_install:
-  - sudo add-apt-repository ppa:beineri/opt-qt551-trusty -y
-  - sudo apt-get update -qq
+  - if [ -n "$DEPLOY_TESTS" ]; then sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then sudo add-apt-repository ppa:beineri/opt-qt551-trusty -y; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then sudo apt-get update -qq; fi
 
 install:
-  - sudo apt-get install -qq qt55base; source /opt/qt55/bin/qt55-env.sh
-  - sudo apt-get -y install binutils xpra
-  - sudo apt-get -y install qt55base qt55quickcontrols qt55svg qt55declarative
-  - sudo unlink /usr/bin/g++ && sudo ln -s /usr/bin/g++-5 /usr/bin/g++
+  - if [ -n "$DEPLOY_TESTS" ]; then sudo apt-get -y install gcc-5 g++-5; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then sudo apt-get install -qq qt55base; source /opt/qt55/bin/qt55-env.sh; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then sudo apt-get -y install binutils xpra; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then sudo apt-get install -y gdb; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then sudo apt-get -y install qt55base qt55quickcontrols qt55svg qt55declarative; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then sudo unlink /usr/bin/g++ && sudo ln -s /usr/bin/g++-5 /usr/bin/g++; fi
   - export CXX="g++-5" CC="gcc-5"
 
 before_script:
   - export COMPILER=g++-5
-  - g++ --version
+  - if [ -n "$DEPLOY_TESTS" ]; then g++ --version; fi
   - ulimit -c unlimited -S       # enable core dumps
-  - git clone -o 44b7f9583ffe0ee0 https://github.com/NixOS/patchelf.git
-  - cd patchelf
-  - bash ./bootstrap.sh
-  - ./configure
-  - make -j2
-  - sudo make install
-  - cd ../
+  - if [ -n "$DEPLOY_TESTS" ]; then git clone -o 44b7f9583ffe0ee0 https://github.com/NixOS/patchelf.git; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then cd patchelf; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then bash ./bootstrap.sh; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then ./configure; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then make -j2; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then sudo make install; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then cd ../; fi
 
 script:
-  - xpra start :42 # start the display to have it ready before needed
+  - if [ -n "$DEPLOY_TESTS" ]; then xpra start :42; fi # start the display to have it ready before needed
   - export DISPLAY=:42 # for the Qml app to start
   - cd src/
   - go build -o linuxdeploy
   - go test -v
-  - cd ../tests/TestLib
-  - qmake "CONFIG+=debug" TestLib.pro
-  - make
-  - cd ../TestApp
-  - qmake "CONFIG+=debug" TestApp.pro
-  - make
-  - cd ../../
-  - tests/deploy_and_run.sh
-
+  - if [ -n "$DEPLOY_TESTS" ]; then cd ../tests/TestLib; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then qmake "CONFIG+=debug" TestLib.pro; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then make; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then cd ../TestApp; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then qmake "CONFIG+=debug" TestApp.pro; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then make; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then cd ../../; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then tests/deploy_and_run.sh; fi
+  
+after_success:
+  - if [ -n "$DEPLOY_TESTS" ]; then cat src/linuxdeploy.log; fi
+  
 after_failure:
-  - cat src/linuxdeploy.log
+  - if [ -n "$DEPLOY_TESTS" ]; then cat src/linuxdeploy.log; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then cd src/TestApp.AppDir; fi # should be updated from deploy_and_run.sh
+  - if [ -n "$DEPLOY_TESTS" ]; then for i in $(find ./ -maxdepth 1 -name 'core*' -print); do gdb $(pwd)/TestApp core* -ex "thread apply all bt" -ex "set pagination 0" -batch; done; fi
