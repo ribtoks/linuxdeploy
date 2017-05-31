@@ -164,15 +164,17 @@ func (ad *AppDeployer) processMainExe() {
 }
 
 func (ad *AppDeployer) processCopyTasks() {
+  copiedFiles := make(map[string]bool)
+
   for copyRequest := range ad.copyChannel {
-    ad.processCopyTask(copyRequest)
+    ad.processCopyTask(copiedFiles, copyRequest)
     ad.waitGroup.Done()
   }
 
   log.Printf("Copy tasks processing finished")
 }
 
-func (ad *AppDeployer) processCopyTask(copyRequest *DeployRequest) {
+func (ad *AppDeployer) processCopyTask(copiedFiles map[string]bool, copyRequest *DeployRequest) {
   var destinationPath, destinationPrefix string
 
   if len(copyRequest.sourceRoot) == 0 {
@@ -185,6 +187,11 @@ func (ad *AppDeployer) processCopyTask(copyRequest *DeployRequest) {
   sourcePath := copyRequest.FullPath()
   destinationPath = filepath.Join(ad.destinationPath, destinationPrefix, filepath.Base(copyRequest.sourcePath))
 
+  if _, ok := copiedFiles[destinationPath]; ok {
+    log.Printf("File %v has already been copied", sourcePath)
+    return
+  }
+
   ensureDirExists(destinationPath)
   err := copyFile(sourcePath, destinationPath)
 
@@ -193,6 +200,7 @@ func (ad *AppDeployer) processCopyTask(copyRequest *DeployRequest) {
     return
   }
 
+  copiedFiles[destinationPath] = true
   log.Printf("Copied [%v] to [%v]", sourcePath, destinationPath)
   isQtLibrary := false
 
@@ -270,9 +278,10 @@ func (ad *AppDeployer) deployRecursively(sourceRoot, sourcePath, targetPath stri
   defer ad.waitGroup.Done()
 
   rootpath := filepath.Join(sourceRoot, sourcePath)
-  log.Printf("Deploying recursively %v in %v", sourceRoot, sourcePath)
+  log.Printf("Deploying recursively %v in %v to %v", sourcePath, sourceRoot, targetPath)
 
   onlyLibraries := flags.HasFlag(DEPLOY_ONLY_LIBRARIES_FLAG)
+  var emptyFlags Bitmask = 0
 
   err := filepath.Walk(rootpath, func(path string, info os.FileInfo, err error) error {
     if err != nil {
@@ -298,7 +307,7 @@ func (ad *AppDeployer) deployRecursively(sourceRoot, sourcePath, targetPath stri
     if isLibrary {
       ad.addLibTask(sourceRoot, relativePath, targetPath, flags | LDD_DEPENDENCY_FLAG)
     } else {
-      ad.addCopyTask(sourceRoot, relativePath, targetPath, flags)
+      ad.addCopyTask(sourceRoot, relativePath, targetPath, emptyFlags)
     }
 
     return nil

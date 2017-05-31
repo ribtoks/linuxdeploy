@@ -154,10 +154,16 @@ func (ad *AppDeployer) processFixRPathTasks() {
   }
 
   destinationRoot := ad.destinationPath
+  fixedFiles := make(map[string]bool)
 
   for fullpath := range ad.rpathChannel {
     if patchelfAvailable {
-      fixRPath(fullpath, destinationRoot)
+      if _, ok := fixedFiles[fullpath]; !ok {
+        fixRPath(fullpath, destinationRoot)
+        fixedFiles[fullpath] = true
+      } else {
+        log.Printf("RPATH has been already fixed for %v", fullpath)
+      }
     }
 
     ad.addStripTask(fullpath)
@@ -202,9 +208,15 @@ func (ad *AppDeployer) processStripTasks() {
     stripAvailable = false
   }
 
+  strippedBinaries := make(map[string]bool)
+
   for fullpath := range ad.stripChannel {
     if stripAvailable {
-      stripBinary(fullpath)
+      if _, ok := strippedBinaries[fullpath]; !ok {
+        stripBinary(fullpath)
+      } else {
+        log.Printf("%v has been already stripped", fullpath)
+      }
     }
 
     ad.waitGroup.Done()
