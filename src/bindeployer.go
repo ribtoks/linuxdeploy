@@ -24,6 +24,10 @@ import (
 )
 
 func (ad *AppDeployer) processLibTasks() {
+  if _, err := exec.LookPath("ldd"); err != nil {
+    log.Fatal("ldd cannot be found!")
+  }
+
   for request := range ad.libsChannel {
     ad.processLibTask(request)
     ad.waitGroup.Done()
@@ -56,6 +60,7 @@ func (ad *AppDeployer) processLibTask(request *DeployRequest) {
   }(request)
 
   flags := request.flags
+  // fix rpath of all the libs
   //flags.ClearFlag(FIX_RPATH_FLAG)
   flags.AddFlag(LDD_DEPENDENCY_FLAG)
 
