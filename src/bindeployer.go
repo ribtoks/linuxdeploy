@@ -55,9 +55,12 @@ func (ad *AppDeployer) processLibTask(request *DeployRequest) {
     ad.copyChannel <- copyRequest
   }(request)
 
+  flags := request.flags
+  flags.ClearFlag(FIX_RPATH_FLAG)
+
   for _, dependPath := range dependencies {
     if !ad.isLibraryDeployed(dependPath) {
-      ad.addLibTask("", dependPath, "lib", request.flags)
+      ad.addLibTask("", dependPath, "lib", flags)
     }
   }
 }
