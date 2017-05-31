@@ -154,6 +154,62 @@ func (ad *AppDeployer) resolveLibrary(libname string) (foundPath string) {
   return foundPath
 }
 
+func (ad *AppDeployer) processCopyTasks() {
+  copiedFiles := make(map[string]bool)
+
+  for copyRequest := range ad.copyChannel {
+    ad.processCopyTask(copiedFiles, copyRequest)
+    ad.waitGroup.Done()
+  }
+
+  log.Printf("Copy tasks processing finished")
+}
+
+func (ad *AppDeployer) processCopyTask(copiedFiles map[string]bool, copyRequest *DeployRequest) {
+  var destinationPath, destinationPrefix string
+
+  if len(copyRequest.sourceRoot) == 0 {
+    // absolute path
+    destinationPrefix = copyRequest.targetPath
+  } else {
+    destinationPrefix = filepath.Join(copyRequest.targetPath, copyRequest.SourceDir())
+  }
+
+  sourcePath := copyRequest.FullPath()
+  destinationPath = filepath.Join(ad.destinationPath, destinationPrefix, filepath.Base(copyRequest.sourcePath))
+
+  if _, ok := copiedFiles[destinationPath]; ok {
+    log.Printf("File %v has already been copied", sourcePath)
+    return
+  }
+
+  ensureDirExists(destinationPath)
+  err := copyFile(sourcePath, destinationPath)
+
+  if err != nil {
+    log.Printf("Error while copying [%v] to [%v]: %v", sourcePath, destinationPath, err)
+    return
+  }
+
+  copiedFiles[destinationPath] = true
+  log.Printf("Copied [%v] to [%v]", sourcePath, destinationPath)
+  isQtLibrary := false
+
+  if copyRequest.IsLddDependency() {
+    libraryBasename := filepath.Base(destinationPath)
+    libname := strings.ToLower(libraryBasename)
+
+    if strings.HasPrefix(libname, "libqt") {
+      ad.addQtLibTask(destinationPath)
+      isQtLibrary = true
+    }
+  }
+
+  if !isQtLibrary && copyRequest.RequiresRPathFix() {
+    ad.addFixRPathTask(destinationPath)
+  }
+}
+
 func (ad *AppDeployer) processFixRPathTasks() {
   patchelfAvailable := true
 
