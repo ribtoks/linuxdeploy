@@ -188,6 +188,16 @@ func (ad *AppDeployer) copyMainExe() {
   log.Printf("Destination path of main exe is %v", destinationPath)
 
   ad.addFixRPathTask(destinationPath)
+  ad.createAppLink()
+}
+
+func (ad *AppDeployer) createAppLink() {
+  appname := filepath.Base(ad.destinationExePath)
+  symlinkPath := filepath.Join(ad.destinationPath, "AppRun")
+  err := os.Symlink(appname, symlinkPath)
+  if err != nil {
+    log.Printf("Error creating symlink: %v", err)
+  }
 }
 
 func (ad *AppDeployer) addFixRPathTask(fullpath string) {
