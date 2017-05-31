@@ -44,7 +44,7 @@ script:
   - export DISPLAY=:42 # for the Qml app to start
   - cd src/
   - go build -o linuxdeploy
-  - go test -v
+  - if [ -n "$QUICKBUILD" ]; then go test -v; fi
   - if [ -n "$DEPLOY_TESTS" ]; then cd ../tests/TestLib; fi
   - if [ -n "$DEPLOY_TESTS" ]; then qmake "CONFIG+=debug" TestLib.pro; fi
   - if [ -n "$DEPLOY_TESTS" ]; then make; fi
@@ -53,10 +53,10 @@ script:
   - if [ -n "$DEPLOY_TESTS" ]; then make; fi
   - if [ -n "$DEPLOY_TESTS" ]; then cd ../../; fi
   - if [ -n "$DEPLOY_TESTS" ]; then tests/deploy_and_run.sh; fi
-  
+
 after_success:
   - if [ -n "$DEPLOY_TESTS" ]; then cat src/linuxdeploy.log; fi
-  
+
 after_failure:
   - if [ -n "$DEPLOY_TESTS" ]; then cat src/linuxdeploy.log; fi
   - if [ -n "$DEPLOY_TESTS" ]; then cd src/TestApp.AppDir; fi # should be updated from deploy_and_run.sh

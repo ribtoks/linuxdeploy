@@ -56,7 +56,7 @@ func (ad *AppDeployer) processLibTask(request *DeployRequest) {
   }(request)
 
   flags := request.flags
-  flags.ClearFlag(FIX_RPATH_FLAG)
+  //flags.ClearFlag(FIX_RPATH_FLAG)
   flags.AddFlag(LDD_DEPENDENCY_FLAG)
 
   for _, dependPath := range dependencies {
