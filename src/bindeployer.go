@@ -57,6 +57,7 @@ func (ad *AppDeployer) processLibTask(request *DeployRequest) {
 
   flags := request.flags
   flags.ClearFlag(FIX_RPATH_FLAG)
+  flags.AddFlag(LDD_DEPENDENCY_FLAG)
 
   for _, dependPath := range dependencies {
     if !ad.isLibraryDeployed(dependPath) {
@@ -99,7 +100,7 @@ func (ad *AppDeployer) findLddDependencies(basename, filepath string) ([]string,
       libpath = ad.resolveLibrary(libname)
     }
 
-    log.Printf("[%v]: depends on lib %v from ldd [%v]", basename, libpath, line)
+    log.Printf("[%v]: depends on %v from ldd [%v]", basename, libpath, line)
     dependencies = append(dependencies, libpath)
   }
 

@@ -174,9 +174,11 @@ func (ad *AppDeployer) processQtLibTask(libraryPath string) {
   if !strings.HasPrefix(libname, "libqt") { log.Fatal("Can only accept Qt libraries") }
   log.Printf("Inspecting Qt lib: %v", libraryBasename)
 
+  deployFlags := LDD_DEPENDENCY_FLAG | DEPLOY_ONLY_LIBRARIES_FLAG | FIX_RPATH_FLAG
+
   if strings.HasPrefix(libname, "libqt5gui") {
     ad.addQtPluginTask("platforms/libqxcb.so")
-    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "imageformats", "plugins", LIBRARIES_AND_RPATH_FLAG)
+    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "imageformats", "plugins", deployFlags)
   } else
   if strings.HasPrefix(libname, "libqt5svg") {
     ad.addQtPluginTask("iconengines/libqsvgicon.so")
@@ -186,17 +188,17 @@ func (ad *AppDeployer) processQtLibTask(libraryPath string) {
   } else
   if strings.HasPrefix(libname, "libqt5opengl") ||
     strings.HasPrefix(libname, "libqt5xcbqpa") {
-    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "xcbglintegrations", "plugins", LIBRARIES_AND_RPATH_FLAG)
+    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "xcbglintegrations", "plugins", deployFlags)
   } else
   if strings.HasPrefix(libname, "libqt5network") {
-    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "bearer", "plugins", LIBRARIES_AND_RPATH_FLAG)
+    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "bearer", "plugins", deployFlags)
   } else
   if strings.HasPrefix(libname, "libqt5sql") {
-    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "sqldrivers", "plugins", LIBRARIES_AND_RPATH_FLAG)
+    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "sqldrivers", "plugins", deployFlags)
   } else
   if strings.HasPrefix(libname, "libqt5multimedia") {
-    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "mediaservice", "plugins", LIBRARIES_AND_RPATH_FLAG)
-    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "audio", "plugins", LIBRARIES_AND_RPATH_FLAG)
+    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "mediaservice", "plugins", deployFlags)
+    ad.deployRecursively(ad.qtDeployer.PluginsPath(), "audio", "plugins", deployFlags)
   } else
   if strings.HasPrefix(libname, "libqt5webenginecore") {
     ad.addCopyQtDepTask(ad.qtDeployer.LibExecsPath(), "QtWebEngineProcess", "libexecs")
