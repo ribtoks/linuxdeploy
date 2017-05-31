@@ -62,5 +62,7 @@ after_success:
 after_failure:
   - if [ -n "$DEPLOY_TESTS" ]; then cat src/linuxdeploy.log; fi
   - if [ -n "$DEPLOY_TESTS" ]; then cat src/linuxdeploy_blacklist.log; fi
-  - if [ -n "$DEPLOY_TESTS" ]; then cd src/; fi
-  - if [ -n "$DEPLOY_TESTS" ]; then for i in $(find ./ -maxdepth 3 -name 'core*' -print); do gdb $(pwd)/TestApp core* -ex "thread apply all bt" -ex "set pagination 0" -batch; done; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then cd src/TestApp.AppDir1; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then for i in $(find ./ -maxdepth 1 -name 'core*' -print); do gdb $(pwd)/TestApp core* -ex "thread apply all bt" -ex "set pagination 0" -batch; done; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then cd ../TestApp.AppDir2; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then for i in $(find ./ -maxdepth 1 -name 'core*' -print); do gdb $(pwd)/TestApp core* -ex "thread apply all bt" -ex "set pagination 0" -batch; done; fi

@@ -185,6 +185,7 @@ func (ad *AppDeployer) copyMainExe() {
   }
 
   ad.destinationExePath = destinationPath
+  log.Printf("Destination path of main exe is %v", destinationPath)
 
   ad.addFixRPathTask(destinationPath)
 }
