@@ -42,7 +42,7 @@ func (ad *AppDeployer) processLibTask(request *DeployRequest) {
 
   log.Printf("Processing library: %v", libpath)
 
-  dependencies, err := ad.findLddDependencies(libpath)
+  dependencies, err := ad.findLddDependencies(request.Basename(), libpath)
   if err != nil {
     log.Printf("Error while dependency check for %v: %v", libpath, err)
     return
@@ -76,7 +76,7 @@ func (ad *AppDeployer) canSkipLibrary(libpath string) bool {
   return canSkip
 }
 
-func (ad *AppDeployer) findLddDependencies(filepath string) ([]string, error) {
+func (ad *AppDeployer) findLddDependencies(basename, filepath string) ([]string, error) {
   log.Printf("Inspecting %v", filepath)
 
   out, err := exec.Command("ldd", filepath).Output()
@@ -99,7 +99,7 @@ func (ad *AppDeployer) findLddDependencies(filepath string) ([]string, error) {
       libpath = ad.resolveLibrary(libname)
     }
 
-    log.Printf("Parsed lib %v from ldd [%v]", libpath, line)
+    log.Printf("[%v]: depends on lib %v from ldd [%v]", basename, libpath, line)
     dependencies = append(dependencies, libpath)
   }
 

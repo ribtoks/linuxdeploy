@@ -143,7 +143,7 @@ func (ad *AppDeployer) isLibraryDeployed(libpath string) bool {
 }
 
 func (ad *AppDeployer) processMainExe() {
-  dependencies, err := ad.findLddDependencies(ad.targetExePath)
+  dependencies, err := ad.findLddDependencies(filepath.Base(ad.targetExePath), ad.targetExePath)
   if err != nil { log.Fatal(err) }
 
   ad.accountLibrary(ad.targetExePath)
