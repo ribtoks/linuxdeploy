@@ -151,7 +151,7 @@ func (ad *AppDeployer) processMainExe() {
 
   for _, dependPath := range dependencies {
     if !ad.isLibraryDeployed(dependPath) {
-      ad.addLibTask("", dependPath, "lib", LDD_DEPENDENCY_FLAG)
+      ad.addLibTask("", dependPath, "lib", LDD_AND_RPATH_FLAG)
     } else {
       log.Printf("Dependency seems to be processed: %v", dependPath)
     }
