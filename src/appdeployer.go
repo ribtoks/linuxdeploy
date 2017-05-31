@@ -96,9 +96,9 @@ func (ad *AppDeployer) DeployApp() {
 
   blacklist := generateLibsBlacklist()
 
-  log.Printf("Waiting for processing to finish")
+  log.Printf("Waiting for tasks processing to finish")
   ad.waitGroup.Wait()
-  log.Printf("Processing has finished")
+  log.Printf("Tasks have been processed")
 
   close(ad.libsChannel)
   close(ad.copyChannel)
