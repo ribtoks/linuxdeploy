@@ -202,16 +202,14 @@ func (ad *AppDeployer) processCopyTask(copiedFiles map[string]bool, copyRequest 
 
   copiedFiles[destinationPath] = true
   log.Printf("Copied [%v] to [%v]", sourcePath, destinationPath)
+
+  libraryBasename := filepath.Base(destinationPath)
+  libname := strings.ToLower(libraryBasename)
   isQtLibrary := false
 
-  if copyRequest.RequiresLddCheck() {
-    libraryBasename := filepath.Base(destinationPath)
-    libname := strings.ToLower(libraryBasename)
-
-    if strings.HasPrefix(libname, "libqt") {
-      ad.addQtLibTask(destinationPath)
-      isQtLibrary = true
-    }
+  if strings.HasPrefix(libname, "libqt") {
+    ad.addQtLibTask(destinationPath)
+    isQtLibrary = true
   }
 
   if !isQtLibrary && copyRequest.RequiresRPathFix() {
