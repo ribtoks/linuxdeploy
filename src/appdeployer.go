@@ -227,6 +227,14 @@ func (ad *AppDeployer) copyIcon() {
     log.Printf("Error while copying icon %v", err)
   }
 
+  if generateAppImg() {
+    // copy icon as .DirIcon too
+    err := copyFile(*iconPathFlag, filepath.Join(ad.destinationRoot, ".DirIcon"))
+    if err != nil {
+      log.Printf("Error while creating AppDir icon %v", err)
+    }
+  }
+
   ad.iconFilename = iconFilename
 }
 
