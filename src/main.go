@@ -106,7 +106,7 @@ func main() {
     },
 
     additionalLibPaths: make([]string, 0, 10),
-    destinationPath: appDirPath,
+    destinationRoot: appDirPath,
     targetExePath: resolveTargetExe(),
   }
 

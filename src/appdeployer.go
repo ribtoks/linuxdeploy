@@ -76,7 +76,7 @@ type AppDeployer struct {
 
   qtDeployer *QtDeployer
   additionalLibPaths []string
-  destinationPath string
+  destinationRoot string
   targetExePath string
   destinationExePath string
   iconFilename string
@@ -109,7 +109,7 @@ func (ad *AppDeployer) DeployApp() {
 
   var wg sync.WaitGroup
   wg.Add(1)
-  go ad.deployQtTranslations(filepath.Join(ad.destinationPath, "translations"), &wg)
+  go ad.deployQtTranslations(filepath.Join(ad.destinationRoot, "translations"), &wg)
 
   err := cleanupBlacklistedLibs(ad.LibsPath(), blacklist)
   if err != nil { log.Printf("Error while removing blacklisted libs: %v", err) }
@@ -118,7 +118,7 @@ func (ad *AppDeployer) DeployApp() {
 }
 
 func (ad *AppDeployer) LibsPath() string {
-  return filepath.Join(ad.destinationPath, "lib")
+  return filepath.Join(ad.destinationRoot, "lib")
 }
 
 func (ad *AppDeployer) addLibTask(sourceRoot, sourcePath, targetPath string, flags Bitmask) {
@@ -177,7 +177,7 @@ func (ad *AppDeployer) processMainExe() {
 }
 
 func (ad *AppDeployer) copyMainExe() {
-  destinationPath := filepath.Join(ad.destinationPath, filepath.Base(ad.targetExePath))
+  destinationPath := filepath.Join(ad.destinationRoot, filepath.Base(ad.targetExePath))
   ensureDirExists(destinationPath)
 
   err := copyFile(ad.targetExePath, destinationPath)
@@ -199,7 +199,7 @@ func (ad *AppDeployer) copyMainExe() {
 
 func (ad *AppDeployer) createAppLink() {
   appname := filepath.Base(ad.destinationExePath)
-  symlinkPath := filepath.Join(ad.destinationPath, "AppRun")
+  symlinkPath := filepath.Join(ad.destinationRoot, "AppRun")
   err := os.Symlink(appname, symlinkPath)
   if err != nil {
     log.Printf("Error creating symlink: %v", err)
@@ -215,7 +215,7 @@ func (ad *AppDeployer) copyIcon() {
   }
 
   iconFilename := filepath.Base(*iconPathFlag)
-  iconDestinationPath := filepath.Join(ad.destinationPath, iconFilename)
+  iconDestinationPath := filepath.Join(ad.destinationRoot, iconFilename)
   err := copyFile(*iconPathFlag, iconDestinationPath)
   if err != nil {
     log.Printf("Error while copying icon %v", err)

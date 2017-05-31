@@ -176,7 +176,7 @@ func (ad *AppDeployer) processCopyTask(copiedFiles map[string]bool, copyRequest 
   }
 
   sourcePath := copyRequest.FullPath()
-  destinationPath = filepath.Join(ad.destinationPath, destinationPrefix, filepath.Base(copyRequest.sourcePath))
+  destinationPath = filepath.Join(ad.destinationRoot, destinationPrefix, filepath.Base(copyRequest.sourcePath))
 
   if _, ok := copiedFiles[destinationPath]; ok {
     log.Printf("File %v has already been copied", sourcePath)
@@ -218,7 +218,7 @@ func (ad *AppDeployer) processFixRPathTasks() {
     patchelfAvailable = false
   }
 
-  destinationRoot := ad.destinationPath
+  destinationRoot := ad.destinationRoot
   fixedFiles := make(map[string]bool)
 
   for fullpath := range ad.rpathChannel {
