@@ -53,11 +53,14 @@ script:
   - if [ -n "$DEPLOY_TESTS" ]; then make; fi
   - if [ -n "$DEPLOY_TESTS" ]; then cd ../../; fi
   - if [ -n "$DEPLOY_TESTS" ]; then tests/deploy_and_run.sh; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then tests/deploy_and_run_blacklist.sh; fi
 
 after_success:
   - if [ -n "$DEPLOY_TESTS" ]; then cat src/linuxdeploy.log; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then cat src/linuxdeploy_blacklist.log; fi
 
 after_failure:
   - if [ -n "$DEPLOY_TESTS" ]; then cat src/linuxdeploy.log; fi
-  - if [ -n "$DEPLOY_TESTS" ]; then cd src/TestApp.AppDir; fi # should be updated from deploy_and_run.sh
-  - if [ -n "$DEPLOY_TESTS" ]; then for i in $(find ./ -maxdepth 1 -name 'core*' -print); do gdb $(pwd)/TestApp core* -ex "thread apply all bt" -ex "set pagination 0" -batch; done; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then cat src/linuxdeploy_blacklist.log; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then cd src/; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then for i in $(find ./ -maxdepth 3 -name 'core*' -print); do gdb $(pwd)/TestApp core* -ex "thread apply all bt" -ex "set pagination 0" -batch; done; fi
