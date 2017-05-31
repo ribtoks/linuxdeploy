@@ -4,7 +4,7 @@ pushd src
 
 APP_DIR=TestApp.AppDir
 
-./linuxdeploy -exe ../tests/TestApp/TestApp -appdir $APP_DIR -overwrite -libs ../tests/TestLib/ -qmldir ../tests/TestApp/
+./linuxdeploy -exe ../tests/TestApp/TestApp -default-blacklist -appdir $APP_DIR -overwrite -libs ../tests/TestLib/ -qmldir ../tests/TestApp/
 
 rc=$?; if [[ $rc != 0 ]]; then exit 1; fi
 
@@ -22,7 +22,7 @@ unset QT_PLUGIN_PATH
 unset LD_LIBRARY_PATH
 unset QTDIR
 
-export QML_IMPORT_TRACE=1 
+export QML_IMPORT_TRACE=1
 export QT_DEBUG_PLUGINS=1
 
 LD_DEBUG=libs ./TestApp

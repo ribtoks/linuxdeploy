@@ -45,10 +45,10 @@ var (
 // flags
 var (
   outTypeFlag = flag.String("out", "appimage", "Type of the generated output")
-  blacklistFileFlag = flag.String("blacklist", "libs.blacklist", "Path to the libraries blacklist file")
+  blacklistFileFlag = flag.String("blacklist", "libs.blacklist", "Path to the additional libraries blacklist file")
+  defaultBlackListFlag = flag.Bool("default-blacklist", false, "Add default blacklist")
   logPathFlag = flag.String("log", "linuxdeploy.log", "Path to the logfile")
   stdoutFlag = flag.Bool("stdout", false, "Log to stdout and to logfile")
-  verboseFlag = flag.Bool("verbose", true, "Verbose logging")
   exePathFlag = flag.String("exe", "", "Path to the executable")
   appDirPathFlag = flag.String("appdir", "", "Path to the AppDir (if 'type' is appimage)")
   overwriteFlag = flag.Bool("overwrite", false, "Overwrite output if preset")

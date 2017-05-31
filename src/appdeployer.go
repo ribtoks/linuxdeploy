@@ -94,6 +94,8 @@ func (ad *AppDeployer) DeployApp() {
   go ad.processStripTasks()
   go ad.processQtLibTasks()
 
+  blacklist := generateLibsBlacklist()
+
   log.Printf("Waiting for processing to finish")
   ad.waitGroup.Wait()
   log.Printf("Processing has finished")
@@ -104,8 +106,15 @@ func (ad *AppDeployer) DeployApp() {
   close(ad.rpathChannel)
   close(ad.stripChannel)
 
+  err := cleanupBlacklistedLibs(ad.LibsPath(), blacklist)
+  if err != nil { log.Printf("Error while removing blacklisted libs: %v", err) }
+
   // let channels goroutines print end of work confirmation
   time.Sleep(200 * time.Millisecond)
+}
+
+func (ad *AppDeployer) LibsPath() string {
+  return filepath.Join(ad.destinationPath, "lib")
 }
 
 func (ad *AppDeployer) addLibTask(sourceRoot, sourcePath, targetPath string, flags Bitmask) {
