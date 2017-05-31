@@ -235,7 +235,11 @@ func (ad *AppDeployer) generateDesktopFile() {
   desktopFilepath := filepath.Join(ad.destinationRoot, fmt.Sprintf("%s.desktop", exeFilename))
 
   desktopFile, err := os.OpenFile(desktopFilepath, os.O_CREATE | os.O_RDWR | os.O_TRUNC, 0777)
-  if err != nil { return }
+  if err != nil {
+    log.Printf("Failed to create desktop file: %v", err)
+    return
+  }
+
 	writer := bufio.NewWriter(desktopFile)
 	defer desktopFile.Close()
 
@@ -258,6 +262,8 @@ func (ad *AppDeployer) generateDesktopFile() {
   fmt.Fprintln(writer, "Encoding=UTF-8")
 
   writer.Flush()
+
+  log.Println("Desktop file generated")
 }
 
 func (ad *AppDeployer) addFixRPathTask(fullpath string) {
