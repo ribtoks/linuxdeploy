@@ -21,6 +21,7 @@ import (
   "fmt"
   "os"
   "os/exec"
+  "sync"
 )
 
 // list of modules from windeployqt
@@ -162,32 +163,44 @@ func (ad *AppDeployer) deployQtTranslations(translationsRoot string, done chan<-
   log.Printf("Required translations: %v", ad.qtDeployer.translationsRequired)
   ensureDirExists(filepath.Join(translationsRoot, "dummyfile"))
 
+  var wg sync.WaitGroup
+
   for _, lang := range languages {
-    arguments := make([]string, 0, 10)
-    // generate combined translation files for each language
-    outputFile := fmt.Sprintf("qt_%s.qm", lang)
-    outputFilepath := filepath.Join(translationsRoot, outputFile)
-
-    arguments = append(arguments, "-o", outputFilepath)
-
-    for module, _ := range ad.qtDeployer.translationsRequired {
-      trFile := fmt.Sprintf("%s_%s.qm", module, lang)
-      trFilepath := filepath.Join(qtTranslationsPath, trFile)
-      arguments = append(arguments, trFilepath)
-    }
-
-    log.Printf("Launching lconvert with arguments %v", arguments)
-
-    err := exec.Command(lconvertPath, arguments...).Run()
-    if err != nil {
-      log.Printf("lconvert failed with %v", err)
-    } else {
-      log.Printf("Generated translations file %v", outputFile)
-    }
+    wg.Add(1)
+    go ad.deployLanguage(lang, lconvertPath, translationsRoot, &wg)
   }
 
+  wg.Wait()
   log.Printf("Translations generations finished")
   done <- true
+}
+
+func (ad *AppDeployer) deployLanguage(lang, lconvertPath, translationsRoot string, wg *sync.WaitGroup) {
+  defer wg.Done()
+
+  qtTranslationsPath := ad.qtDeployer.TranslationsPath()
+
+  arguments := make([]string, 0, 10)
+  // generate combined translation files for each language
+  outputFile := fmt.Sprintf("qt_%s.qm", lang)
+  outputFilepath := filepath.Join(translationsRoot, outputFile)
+
+  arguments = append(arguments, "-o", outputFilepath)
+
+  for module, _ := range ad.qtDeployer.translationsRequired {
+    trFile := fmt.Sprintf("%s_%s.qm", module, lang)
+    trFilepath := filepath.Join(qtTranslationsPath, trFile)
+    arguments = append(arguments, trFilepath)
+  }
+
+  log.Printf("Launching lconvert with arguments %v", arguments)
+
+  err := exec.Command(lconvertPath, arguments...).Run()
+  if err != nil {
+    log.Printf("lconvert failed with %v", err)
+  } else {
+    log.Printf("Generated translations file %v", outputFile)
+  }
 }
 
 func retrieveAvailableLanguages(translationsRoot string) []string {
