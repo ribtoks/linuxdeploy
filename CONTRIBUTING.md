@@ -1,7 +1,7 @@
 ## Basic architecture overview
 
 The whole deployment process consists of several pipelines: libraries inspection, files copying, RPATH patching, binaries stripping, special Qt libraries handling and others. 
-Each pipeline is represented by an appropriate `channel` which is being handled in it's own goroutine. Libraries and files are passed over from one pipeleine to the other after being processed.
+Each pipeline is represented by an appropriate `channel` which is being handled in it's own goroutine. Libraries and files are passed over from one pipeline to the other after being processed.
 
 `AppDeployer` is a top-level entity to orchestrate the whole deployment. It kicks-off the process by calling `processMainExe()` and starting processign of all other pipelines like `processCopyTasks()`, `processStripTasks()` and others.
 
