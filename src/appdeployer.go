@@ -20,7 +20,6 @@ import (
   "strings"
   "sync"
   "path/filepath"
-  "time"
 )
 
 const (
@@ -106,11 +105,13 @@ func (ad *AppDeployer) DeployApp() {
   close(ad.rpathChannel)
   close(ad.stripChannel)
 
+  done := make(chan bool)
+  go ad.deployQtTranslations(filepath.Join(ad.destinationPath, "translations"), done)
+
   err := cleanupBlacklistedLibs(ad.LibsPath(), blacklist)
   if err != nil { log.Printf("Error while removing blacklisted libs: %v", err) }
 
-  // let channels goroutines print end of work confirmation
-  time.Sleep(200 * time.Millisecond)
+  <- done
 }
 
 func (ad *AppDeployer) LibsPath() string {

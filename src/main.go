@@ -101,6 +101,7 @@ func main() {
       qmlImportDirs: qmlImports,
       privateWidgetsDeployed: false,
       qtEnvironmentSet: false,
+      translationsRequired: make(map[string]bool),
     },
 
     additionalLibPaths: make([]string, 0, 10),

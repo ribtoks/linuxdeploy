@@ -60,6 +60,7 @@ type QtDeployer struct {
   qmlImportDirs []string
   privateWidgetsDeployed bool
   qtEnvironmentSet bool
+  translationsRequired map[string]bool
 }
 
 func (qd *QtDeployer) queryQtEnv() error {
@@ -173,6 +174,8 @@ func (ad *AppDeployer) processQtLibTask(libraryPath string) {
 
   if !strings.HasPrefix(libname, "libqt") { log.Fatal("Can only accept Qt libraries") }
   log.Printf("Inspecting Qt lib: %v", libraryBasename)
+
+  ad.qtDeployer.accountQtLibrary(libname)
 
   deployFlags := LDD_DEPENDENCY_FLAG | DEPLOY_ONLY_LIBRARIES_FLAG | FIX_RPATH_FLAG
 
