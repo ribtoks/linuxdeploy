@@ -23,23 +23,23 @@ import (
   "fmt"
 )
 
-func (ad *AppDeployer) processLibs() {
+func (ad *AppDeployer) processLibTasks() {
   for request := range ad.libsChannel {
-    ad.processLibrary(request)
+    ad.processLibTask(request)
     ad.waitGroup.Done()
   }
-  
+
   log.Println("Libraries processing finished")
 }
 
-func (ad *AppDeployer) processLibrary(request *DeployRequest) {
+func (ad *AppDeployer) processLibTask(request *DeployRequest) {
   libpath := request.FullPath()
-  
+
   if ad.canSkipLibrary(libpath) {
     log.Printf("Skipping library: %v", libpath)
     return
   }
-  
+
   log.Printf("Processing library: %v", libpath)
 
   dependencies, err := ad.findLddDependencies(libpath)
@@ -57,19 +57,19 @@ func (ad *AppDeployer) processLibrary(request *DeployRequest) {
 
   for _, dependPath := range dependencies {
     if !ad.isLibraryDeployed(dependPath) {
-      ad.deployLibrary("", dependPath, "lib")
+      ad.addLibTask("", dependPath, "lib", request.flags)
     }
   }
 }
-               
+
 func (ad *AppDeployer) canSkipLibrary(libpath string) bool {
-  canSkip := false  
-  if strings.HasPrefix(libpath, "linux-vdso.so") { 
-    canSkip = true 
-  } else if ad.isLibraryDeployed(libpath) { 
-    canSkip = true 
+  canSkip := false
+  if strings.HasPrefix(libpath, "linux-vdso.so") {
+    canSkip = true
+  } else if ad.isLibraryDeployed(libpath) {
+    canSkip = true
   }
-  
+
   return canSkip
 }
 
@@ -145,7 +145,7 @@ func (ad *AppDeployer) resolveLibrary(libname string) (foundPath string) {
   return foundPath
 }
 
-func (ad *AppDeployer) processRunPathChangeRequests() {
+func (ad *AppDeployer) processFixRPathTasks() {
   patchelfAvailable := true
 
   if _, err := exec.LookPath("patchelf"); err != nil {
@@ -157,10 +157,10 @@ func (ad *AppDeployer) processRunPathChangeRequests() {
 
   for fullpath := range ad.rpathChannel {
     if patchelfAvailable {
-      changeRPath(fullpath, destinationRoot)
+      fixRPath(fullpath, destinationRoot)
     }
 
-    ad.stripBinary(fullpath)
+    ad.addStripTask(fullpath)
 
     ad.waitGroup.Done()
   }
@@ -168,7 +168,7 @@ func (ad *AppDeployer) processRunPathChangeRequests() {
   log.Printf("RPath change requests processing finished")
 }
 
-func changeRPath(fullpath, destinationRoot string) {
+func fixRPath(fullpath, destinationRoot string) {
   libdir := filepath.Dir(fullpath)
   relativePath, err := filepath.Rel(libdir, destinationRoot)
   if err != nil {
@@ -185,7 +185,7 @@ func changeRPath(fullpath, destinationRoot string) {
   }
 }
 
-func (ad *AppDeployer) stripBinary(fullpath string) {
+func (ad *AppDeployer) addStripTask(fullpath string) {
   if *stripFlag {
     ad.waitGroup.Add(1)
     go func() {
@@ -194,7 +194,7 @@ func (ad *AppDeployer) stripBinary(fullpath string) {
   }
 }
 
-func (ad *AppDeployer) processStripRequests() {
+func (ad *AppDeployer) processStripTasks() {
   stripAvailable := true
 
   if _, err := exec.LookPath("strip"); err != nil {

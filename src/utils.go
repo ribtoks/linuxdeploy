@@ -25,6 +25,13 @@ import (
   "bytes"
 )
 
+type Bitmask uint32
+
+func (f Bitmask) HasFlag(flag Bitmask) bool { return f & flag != 0 }
+func (f *Bitmask) AddFlag(flag Bitmask) { *f |= flag }
+func (f *Bitmask) ClearFlag(flag Bitmask) { *f &= ^flag }
+func (f *Bitmask) ToggleFlag(flag Bitmask) { *f ^= flag }
+
 func executablePath() string {
   fullpath, _ := exec.LookPath(os.Args[0])
   return fullpath
@@ -32,7 +39,7 @@ func executablePath() string {
 
 func copyFile(src, dst string) (err error) {
   log.Printf("About to copy file %v to %v", src, dst)
-  
+
   fi, err := os.Stat(src)
   if err != nil { return err }
   sourceMode := fi.Mode()

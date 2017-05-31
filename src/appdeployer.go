@@ -24,21 +24,21 @@ import (
 )
 
 const (
-  // constants for parameter of deployRecursively() method
-  DEPLOY_EVERYTHING = false
-  DEPLOY_LIBRARIES = true
-  LDD_DEPENDENCY = true
-  ORDINARY_FILE = false
-  FIX_RPATH = true
-  LEAVE_RPATH = false
+  LDD_DEPENDENCY_FLAG Bitmask = 1 << iota // check ldd deps for given item
+  FIX_RPATH_FLAG // fix rpath for qt-related libs/plugins
+  DEPLOY_ONLY_LIBRARIES_FLAG
+)
+
+const (
+  LDD_AND_RPATH_FLAG = LDD_DEPENDENCY_FLAG | FIX_RPATH_FLAG
+  LIBRARIES_AND_RPATH_FLAG = FIX_RPATH_FLAG | DEPLOY_ONLY_LIBRARIES_FLAG
 )
 
 type DeployRequest struct {
   sourcePath string // relative or absolute path of file to process
   sourceRoot string // if empty then sourcePath is absolute path
   targetPath string // target *relative* path
-  isLddDependency bool // if true, check ldd dependencies
-  requiresRunPathFix bool // true for all qt plugins
+  flags Bitmask // deployment flags
 }
 
 func (dp *DeployRequest) FullPath() string {
@@ -55,6 +55,14 @@ func (dp *DeployRequest) Basename() string {
 
 func (dp *DeployRequest) SourceDir() string {
   return filepath.Dir(dp.sourcePath)
+}
+
+func (dp *DeployRequest) RequiresRPathFix() bool {
+  return dp.flags.HasFlag(FIX_RPATH_FLAG)
+}
+
+func (dp *DeployRequest) RequiresLddCheck() bool {
+  return dp.flags.HasFlag(LDD_DEPENDENCY_FLAG)
 }
 
 type AppDeployer struct {
@@ -81,10 +89,10 @@ func (ad *AppDeployer) DeployApp() {
   ad.waitGroup.Add(1)
   go ad.processMainExe()
 
-  go ad.processCopyRequests()
-  go ad.processRunPathChangeRequests()
-  go ad.processStripRequests()
-  go ad.processQtLibs()
+  go ad.processCopyTasks()
+  go ad.processFixRPathTasks()
+  go ad.processStripTasks()
+  go ad.processQtLibTasks()
 
   log.Printf("Waiting for processing to finish")
   ad.waitGroup.Wait()
@@ -95,43 +103,33 @@ func (ad *AppDeployer) DeployApp() {
   close(ad.qtChannel)
   close(ad.rpathChannel)
   close(ad.stripChannel)
-  
+
   // let channels goroutines print end of work confirmation
-  time.Sleep(500 * time.Millisecond)
+  time.Sleep(200 * time.Millisecond)
 }
 
-func (ad *AppDeployer) deployLibraryEx(sourceRoot, sourcePath, targetPath string, requiresRunPathFix bool) {
+func (ad *AppDeployer) addLibTask(sourceRoot, sourcePath, targetPath string, flags Bitmask) {
   ad.waitGroup.Add(1)
   go func() {
     ad.libsChannel <- &DeployRequest{
       sourceRoot: sourceRoot,
       sourcePath: sourcePath,
       targetPath: targetPath,
-      isLddDependency: true,
-      requiresRunPathFix: requiresRunPathFix,
+      flags: flags,
     }
   }()
 }
 
-func (ad *AppDeployer) deployLibrary(sourceRoot, sourcePath, targetPath string) {
-  ad.deployLibraryEx(sourceRoot, sourcePath, targetPath, false)
-}
-
-func (ad *AppDeployer) copyFileEx(sourceRoot, sourcePath, targetPath string, isLddDependency, requiresRunPathFix bool) {
+func (ad *AppDeployer) addCopyTask(sourceRoot, sourcePath, targetPath string, flags Bitmask) {
   ad.waitGroup.Add(1)
   go func() {
     ad.copyChannel <- &DeployRequest{
       sourceRoot: sourceRoot,
       sourcePath: sourcePath,
       targetPath: targetPath,
-      isLddDependency: isLddDependency,
-      requiresRunPathFix: requiresRunPathFix,
+      flags: flags,
     }
   }()
-}
-
-func (ad *AppDeployer) copyFile(sourceRoot, sourcePath, targetPath string, isLddDependency bool) {
-  ad.copyFileEx(sourceRoot, sourcePath, targetPath, isLddDependency, false)
 }
 
 func (ad *AppDeployer) accountLibrary(libpath string) {
@@ -149,32 +147,32 @@ func (ad *AppDeployer) processMainExe() {
   if err != nil { log.Fatal(err) }
 
   ad.accountLibrary(ad.targetExePath)
-  ad.copyFileEx("", ad.targetExePath, ".", LDD_DEPENDENCY, FIX_RPATH)
+  ad.addCopyTask("", ad.targetExePath, ".", LDD_AND_RPATH_FLAG)
 
   for _, dependPath := range dependencies {
     if !ad.isLibraryDeployed(dependPath) {
-      ad.deployLibrary("", dependPath, "lib")
+      ad.addLibTask("", dependPath, "lib", LDD_DEPENDENCY_FLAG)
     } else {
       log.Printf("Dependency seems to be processed: %v", dependPath)
     }
   }
 
-  go ad.processLibs()
+  go ad.processLibTasks()
 
-  ad.waitGroup.Done()  
+  ad.waitGroup.Done()
   log.Println("Main exe processing finished")
 }
 
-func (ad *AppDeployer) processCopyRequests() {
+func (ad *AppDeployer) processCopyTasks() {
   for copyRequest := range ad.copyChannel {
-    ad.processCopyRequest(copyRequest)
+    ad.processCopyTask(copyRequest)
     ad.waitGroup.Done()
   }
 
-  log.Printf("Copy requests processing finished")
+  log.Printf("Copy tasks processing finished")
 }
 
-func (ad *AppDeployer) processCopyRequest(copyRequest *DeployRequest) {
+func (ad *AppDeployer) processCopyTask(copyRequest *DeployRequest) {
   var destinationPath, destinationPrefix string
 
   if len(copyRequest.sourceRoot) == 0 {
@@ -194,36 +192,36 @@ func (ad *AppDeployer) processCopyRequest(copyRequest *DeployRequest) {
     log.Printf("Error while copying [%v] to [%v]: %v", sourcePath, destinationPath, err)
     return
   }
-  
+
   log.Printf("Copied [%v] to [%v]", sourcePath, destinationPath)
-  passedOver := false
-  
-  if copyRequest.isLddDependency {
+  isQtLibrary := false
+
+  if copyRequest.RequiresLddCheck() {
     libraryBasename := filepath.Base(destinationPath)
     libname := strings.ToLower(libraryBasename)
 
     if strings.HasPrefix(libname, "libqt") {
-      ad.handleQtLibrary(destinationPath)
-      passedOver = true
+      ad.addQtLibTask(destinationPath)
+      isQtLibrary = true
     }
   }
-  
-  if !passedOver && copyRequest.requiresRunPathFix {
-    ad.changeRPath(destinationPath)
+
+  if !isQtLibrary && copyRequest.RequiresRPathFix() {
+    ad.addFixRPathTask(destinationPath)
   }
 }
 
-func (ad *AppDeployer) changeRPath(fullpath string) {
+func (ad *AppDeployer) addFixRPathTask(fullpath string) {
   ad.waitGroup.Add(1)
   go func() {
     ad.rpathChannel <- fullpath
   }()
 }
 
-func (ad *AppDeployer) handleQtLibrary(fullpath string) {
-  if !ad.qtDeployer.qtEnvironmentSet { 
+func (ad *AppDeployer) addQtLibTask(fullpath string) {
+  if !ad.qtDeployer.qtEnvironmentSet {
     log.Println("Qt environment is not set!")
-    return 
+    return
   }
 
   ad.waitGroup.Add(1)
@@ -237,7 +235,9 @@ func (ad *AppDeployer) copyRecursively(sourceRoot, sourcePath, targetPath string
   // rescue agains premature finish of the main loop
   ad.waitGroup.Add(1)
   defer ad.waitGroup.Done()
-  
+
+  var emptyFlags Bitmask = 0
+
   rootpath := filepath.Join(sourceRoot, sourcePath)
   log.Printf("Copying recursively %v into %v", rootpath, targetPath)
 
@@ -255,7 +255,7 @@ func (ad *AppDeployer) copyRecursively(sourceRoot, sourcePath, targetPath string
       log.Println(err)
     }
 
-    ad.copyFileEx(sourceRoot, relativePath, targetPath, ORDINARY_FILE, LEAVE_RPATH)
+    ad.addCopyTask(sourceRoot, relativePath, targetPath, emptyFlags)
 
     return nil
   })
@@ -264,13 +264,15 @@ func (ad *AppDeployer) copyRecursively(sourceRoot, sourcePath, targetPath string
 }
 
 // inspects libraries for dependencies and copies other files
-func (ad *AppDeployer) deployRecursively(sourceRoot, sourcePath, targetPath string, onlyLibraries, fixRPath bool) error {
+func (ad *AppDeployer) deployRecursively(sourceRoot, sourcePath, targetPath string, flags Bitmask) error {
   // rescue agains premature finish of the main loop
   ad.waitGroup.Add(1)
   defer ad.waitGroup.Done()
-  
+
   rootpath := filepath.Join(sourceRoot, sourcePath)
   log.Printf("Deploying recursively %v in %v", sourceRoot, sourcePath)
+
+  onlyLibraries := flags.HasFlag(DEPLOY_ONLY_LIBRARIES_FLAG)
 
   err := filepath.Walk(rootpath, func(path string, info os.FileInfo, err error) error {
     if err != nil {
@@ -294,9 +296,9 @@ func (ad *AppDeployer) deployRecursively(sourceRoot, sourcePath, targetPath stri
     }
 
     if isLibrary {
-      ad.deployLibraryEx(sourceRoot, relativePath, targetPath, fixRPath)
+      ad.addLibTask(sourceRoot, relativePath, targetPath, flags | LDD_DEPENDENCY_FLAG)
     } else {
-      ad.copyFileEx(sourceRoot, relativePath, targetPath, ORDINARY_FILE, LEAVE_RPATH)
+      ad.addCopyTask(sourceRoot, relativePath, targetPath, flags)
     }
 
     return nil

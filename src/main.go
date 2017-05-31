@@ -99,7 +99,6 @@ func main() {
       deployedQmlImports: make(map[string]bool),
       qtEnv: make(map[QMakeKey]string),
       qmlImportDirs: qmlImports,
-      qmlImportsDeployed: false,
       privateWidgetsDeployed: false,
       qtEnvironmentSet: false,
     },
