@@ -157,11 +157,10 @@ func (ad *AppDeployer) isLibraryDeployed(libpath string) bool {
 func (ad *AppDeployer) processMainExe() {
   defer ad.waitGroup.Done()
 
+  go ad.copyMainExe()
+
   dependencies, err := ad.findLddDependencies(filepath.Base(ad.targetExePath), ad.targetExePath)
   if err != nil { log.Fatal(err) }
-
-  ad.accountLibrary(ad.targetExePath)
-  ad.copyMainExe()
 
   for _, dependPath := range dependencies {
     if !ad.isLibraryDeployed(dependPath) {
