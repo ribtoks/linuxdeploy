@@ -20,6 +20,8 @@ import (
   "strings"
   "sync"
   "path/filepath"
+  "fmt"
+  "bufio"
 )
 
 const (
@@ -190,11 +192,15 @@ func (ad *AppDeployer) copyMainExe() {
 
   ad.addFixRPathTask(destinationPath)
 
-  if *outTypeFlag == "appimage" {
+  if generateAppImg() {
     ad.createAppLink()
   }
 
   ad.copyIcon()
+
+  if *generateDesktopFlag {
+    ad.generateDesktopFile()
+  }
 }
 
 func (ad *AppDeployer) createAppLink() {
@@ -222,6 +228,36 @@ func (ad *AppDeployer) copyIcon() {
   }
 
   ad.iconFilename = iconFilename
+}
+
+func (ad *AppDeployer) generateDesktopFile() {
+  exeFilename := filepath.Base(ad.destinationExePath)
+  desktopFilepath := filepath.Join(ad.destinationRoot, fmt.Sprintf("%s.desktop", exeFilename))
+
+  desktopFile, err := os.OpenFile(desktopFilepath, os.O_CREATE | os.O_RDWR | os.O_TRUNC, 0777)
+  if err != nil { return }
+	writer := bufio.NewWriter(desktopFile)
+	defer desktopFile.Close()
+
+	fmt.Fprintln(writer, "[Desktop Entry]")
+  fmt.Fprintln(writer, "Type=Application")
+  fmt.Fprintf(writer, "Name=%s\n", exeFilename)
+
+  if generateAppImg() {
+    fmt.Fprintln(writer, "Exec=./AppRun %F")
+  } else {
+    fmt.Fprintf(writer, "Exec=%s\n", exeFilename)
+  }
+
+  if len(ad.iconFilename) > 0 {
+    fmt.Fprintf(writer, "Icon=%s\n", ad.iconFilename)
+  }
+
+  fmt.Fprintln(writer, "Terminal=false")
+  fmt.Fprintln(writer, "StartupNotify=true")
+  fmt.Fprintln(writer, "Encoding=UTF-8")
+
+  writer.Flush()
 }
 
 func (ad *AppDeployer) addFixRPathTask(fullpath string) {

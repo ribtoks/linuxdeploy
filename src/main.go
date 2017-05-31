@@ -47,6 +47,7 @@ var (
   outTypeFlag = flag.String("out", "appimage", "Type of the generated output")
   blacklistFileFlag = flag.String("blacklist", "libs.blacklist", "Path to the additional libraries blacklist file")
   defaultBlackListFlag = flag.Bool("default-blacklist", false, "Add default blacklist")
+  generateDesktopFlag = flag.Bool("gen-desktop", false, "Generate desktop file")
   logPathFlag = flag.String("log", "linuxdeploy.log", "Path to the logfile")
   stdoutFlag = flag.Bool("stdout", false, "Log to stdout and to logfile")
   exePathFlag = flag.String("exe", "", "Path to the executable")
@@ -197,4 +198,8 @@ func resolveQMake() string {
   }
 
   return currentPath
+}
+
+func generateAppImg() bool {
+  return *outTypeFlag == "appimage"
 }
