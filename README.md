@@ -4,7 +4,7 @@ A tool for creating standalone Linux applications
 [![Build Status](https://travis-ci.org/Ribtoks/linuxdeploy.svg?branch=master)](https://travis-ci.org/Ribtoks/linuxdeploy)
 
 # Description
-_linuxdeploy_ inspects the executable file and deploys it alongside with all the dependencies to a specified location. Afterwards RPATH is fixed correctly so deployed executable only uses deployed libraries. Main use-case for this tool is deploying Qt applications on Linux without pain in the format of AppImage, however any executable deployment should work.
+**linuxdeploy** inspects the executable file and deploys it alongside with all the dependencies to a specified location. Afterwards RPATH is fixed correctly so deployed executable only uses deployed libraries. Main use-case for this tool is _deploying Qt applications on Linux without pain in the format of AppImage_, however your mileage may vary.
 
 # Build
 
@@ -15,7 +15,11 @@ As easy as:
     
 # Dependencies
 
-You have to have [patchelf](https://github.com/NixOS/patchelf), `ldd`, `strip` (optionally) in your `PATH`.
+You have to have in your `PATH`:
+
+* `ldd` (checking dso dependencies)
+* [patchelf](https://github.com/NixOS/patchelf) (patching `RPATH` in binaries)
+* `strip` (optionally to remove debug symbols from binaries)
  
 # Usage
 
@@ -23,7 +27,8 @@ You have to have [patchelf](https://github.com/NixOS/patchelf), `ldd`, `strip` (
 
 Most simple usage of this tool can be expressed with a following commands:
 
-    linuxdeploy -exe /path/to/myexe -appdir myexe.AppDir -icon /path/to/icon -gen-desktop -default-blacklist -out appimage
+    linuxdeploy -exe /path/to/myexe -appdir myexe.AppDir -icon /path/to/icon 
+        -gen-desktop -default-blacklist -out appimage
     appimagetool --verbose -n myexe.AppDir "myexe.AppImage"
    
 These commands will deploy application `myexe` and it's dependencies to the directory `./myexe.AppDir/` packing in the AppImage-compatible structure. Afterwards AppImage is generated with a proper tool.
