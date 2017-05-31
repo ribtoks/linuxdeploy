@@ -79,6 +79,7 @@ type AppDeployer struct {
   destinationPath string
   targetExePath string
   destinationExePath string
+  iconFilename string
 }
 
 func (ad *AppDeployer) DeployApp() {
@@ -192,6 +193,8 @@ func (ad *AppDeployer) copyMainExe() {
   if *outTypeFlag == "appimage" {
     ad.createAppLink()
   }
+
+  ad.copyIcon()
 }
 
 func (ad *AppDeployer) createAppLink() {
@@ -201,6 +204,24 @@ func (ad *AppDeployer) createAppLink() {
   if err != nil {
     log.Printf("Error creating symlink: %v", err)
   }
+}
+
+func (ad *AppDeployer) copyIcon() {
+  if len(*iconPathFlag) == 0 { return }
+
+  if _, err := os.Stat(*iconPathFlag); err != nil {
+    log.Printf("Cannot process icon %v: %v", *iconPathFlag, err)
+    return
+  }
+
+  iconFilename := filepath.Base(*iconPathFlag)
+  iconDestinationPath := filepath.Join(ad.destinationPath, iconFilename)
+  err := copyFile(*iconPathFlag, iconDestinationPath)
+  if err != nil {
+    log.Printf("Error while copying icon %v", err)
+  }
+
+  ad.iconFilename = iconFilename
 }
 
 func (ad *AppDeployer) addFixRPathTask(fullpath string) {
