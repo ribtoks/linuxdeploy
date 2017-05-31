@@ -29,6 +29,7 @@ Most simple usage of this tool can be expressed with a following commands:
 
     linuxdeploy -exe /path/to/myexe -appdir myexe.AppDir -icon /path/to/icon 
         -gen-desktop -default-blacklist -out appimage
+        
     appimagetool --verbose -n myexe.AppDir "myexe.AppImage"
    
 These commands will deploy application `myexe` and it's dependencies to the directory `./myexe.AppDir/` packing in the AppImage-compatible structure. Afterwards AppImage is generated with a proper tool.
