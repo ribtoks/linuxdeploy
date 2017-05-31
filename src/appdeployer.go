@@ -188,7 +188,10 @@ func (ad *AppDeployer) copyMainExe() {
   log.Printf("Destination path of main exe is %v", destinationPath)
 
   ad.addFixRPathTask(destinationPath)
-  ad.createAppLink()
+
+  if *outTypeFlag == "appimage" {
+    ad.createAppLink()
+  }
 }
 
 func (ad *AppDeployer) createAppLink() {

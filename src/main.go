@@ -50,6 +50,7 @@ var (
   logPathFlag = flag.String("log", "linuxdeploy.log", "Path to the logfile")
   stdoutFlag = flag.Bool("stdout", false, "Log to stdout and to logfile")
   exePathFlag = flag.String("exe", "", "Path to the executable")
+  iconPathFlag = flag.String("icon", "", "Path the exe's icon (used for desktop file)")
   appDirPathFlag = flag.String("appdir", "", "Path to the AppDir (if 'type' is appimage)")
   overwriteFlag = flag.Bool("overwrite", false, "Overwrite output if preset")
   qmakePathFlag = flag.String("qmake", "", "Path to qmake")
