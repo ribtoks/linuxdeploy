@@ -257,12 +257,16 @@ func (ad *AppDeployer) generateDesktopFile() {
 
   if generateAppImg() {
     fmt.Fprintln(writer, "Exec=./AppRun %F")
+    if len(ad.iconFilename) > 0 {
+      extensionStartIndex := strings.LastIndex(ad.iconFilename, ".")
+      iconBasename := ad.iconFilename[:extensionStartIndex]
+      fmt.Fprintf(writer, "Icon=%s\n", iconBasename)
+    }
   } else {
     fmt.Fprintf(writer, "Exec=%s\n", exeFilename)
-  }
-
-  if len(ad.iconFilename) > 0 {
-    fmt.Fprintf(writer, "Icon=%s\n", ad.iconFilename)
+    if len(ad.iconFilename) > 0 {
+      fmt.Fprintf(writer, "Icon=%s\n", ad.iconFilename)
+    }
   }
 
   fmt.Fprintln(writer, "Terminal=false")
