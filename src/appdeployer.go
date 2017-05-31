@@ -78,6 +78,7 @@ type AppDeployer struct {
   additionalLibPaths []string
   destinationPath string
   targetExePath string
+  destinationExePath string
 }
 
 func (ad *AppDeployer) DeployApp() {
@@ -176,7 +177,17 @@ func (ad *AppDeployer) processMainExe() {
 }
 
 func (ad *AppDeployer) copyMainExe() {
-  ad.addCopyTask("", ad.targetExePath, ".", LDD_AND_RPATH_FLAG)
+  destinationPath := filepath.Join(ad.destinationPath, filepath.Base(ad.targetExePath))
+  ensureDirExists(destinationPath)
+
+  err := copyFile(ad.targetExePath, destinationPath)
+  if err != nil {
+    log.Fatal("Error while copying main exe [%v] to [%v]: %v", ad.targetExePath, destinationPath, err)
+  }
+
+  ad.destinationExePath = destinationPath
+
+  ad.addFixRPathTask(destinationPath)
 }
 
 func (ad *AppDeployer) addFixRPathTask(fullpath string) {
