@@ -141,7 +141,7 @@ func (qd *QtDeployer) accountQtLibrary(libname string) {
       log.Printf("Accounted translation %v for lib %v", translation, libname)
     }
   } else {
-    log.Printf("Unknown module: %v", libname)
+    log.Printf("Translations unknown for module: %v", libname)
   }
 }
 
