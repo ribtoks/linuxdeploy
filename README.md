@@ -12,6 +12,10 @@ As easy as:
 
     cd src
     go build -o linuxdeploy
+    
+# Dependencies
+
+You have to have [patchelf](https://github.com/NixOS/patchelf), `ldd`, `strip` (optionally) in your `PATH`.
  
 # Usage
 
@@ -69,6 +73,6 @@ Every binary deployed (original exe and dependent libs) can be stripped if you s
 
 # Disclaimer
 
-I wrote this tool because [linuxdeployqt](https://github.com/probonopd/linuxdeployqt/) was too buggy for me. Now this tool successfully deploys [more or less complex desktop Qt/Qml app](https://github.com/ribtoks/xpiks) and works a lot faster then the former. There could be some issues with `libQt5Core.so` patching in TravisCI env, but on a field everything seems to work just fine.
+I wrote this tool because [linuxdeployqt](https://github.com/probonopd/linuxdeployqt/) was too buggy for me. Now this tool successfully deploys [more or less complex desktop Qt/Qml app](https://github.com/ribtoks/xpiks) and works a lot faster then the former. There could be some issues with `libQt5Core.so` patching in TravisCI environment, but everything seems to work just fine in a field.
 
 Pull Requests and feedback are more than welcome. Check out _CONTRIBUTING.md_ for more details and documentation on the internals.
