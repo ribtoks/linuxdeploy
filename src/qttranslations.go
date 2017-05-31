@@ -145,7 +145,10 @@ func (qd *QtDeployer) accountQtLibrary(libname string) {
   }
 }
 
-func (ad *AppDeployer) deployQtTranslations(translationsRoot string, done chan<- bool) {
+func (ad *AppDeployer) deployQtTranslations(translationsRoot string, mainWaitGroup *sync.WaitGroup) {
+  defer mainWaitGroup.Done()
+  if !ad.qtDeployer.qtEnvironmentSet { return }
+
   qtTranslationsPath := ad.qtDeployer.TranslationsPath()
 
   languages := retrieveAvailableLanguages(qtTranslationsPath)
@@ -172,7 +175,6 @@ func (ad *AppDeployer) deployQtTranslations(translationsRoot string, done chan<-
 
   wg.Wait()
   log.Printf("Translations generations finished")
-  done <- true
 }
 
 func (ad *AppDeployer) deployLanguage(lang, lconvertPath, translationsRoot string, wg *sync.WaitGroup) {

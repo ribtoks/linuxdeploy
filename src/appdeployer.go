@@ -105,13 +105,14 @@ func (ad *AppDeployer) DeployApp() {
   close(ad.rpathChannel)
   close(ad.stripChannel)
 
-  done := make(chan bool)
-  go ad.deployQtTranslations(filepath.Join(ad.destinationPath, "translations"), done)
+  var wg sync.WaitGroup
+  wg.Add(1)
+  go ad.deployQtTranslations(filepath.Join(ad.destinationPath, "translations"), &wg)
 
   err := cleanupBlacklistedLibs(ad.LibsPath(), blacklist)
   if err != nil { log.Printf("Error while removing blacklisted libs: %v", err) }
 
-  <- done
+  wg.Wait()
 }
 
 func (ad *AppDeployer) LibsPath() string {
@@ -153,11 +154,13 @@ func (ad *AppDeployer) isLibraryDeployed(libpath string) bool {
 }
 
 func (ad *AppDeployer) processMainExe() {
+  defer ad.waitGroup.Done()
+
   dependencies, err := ad.findLddDependencies(filepath.Base(ad.targetExePath), ad.targetExePath)
   if err != nil { log.Fatal(err) }
 
   ad.accountLibrary(ad.targetExePath)
-  ad.addCopyTask("", ad.targetExePath, ".", LDD_AND_RPATH_FLAG)
+  ad.copyMainExe()
 
   for _, dependPath := range dependencies {
     if !ad.isLibraryDeployed(dependPath) {
@@ -169,8 +172,11 @@ func (ad *AppDeployer) processMainExe() {
 
   go ad.processLibTasks()
 
-  ad.waitGroup.Done()
   log.Println("Main exe processing finished")
+}
+
+func (ad *AppDeployer) copyMainExe() {
+  ad.addCopyTask("", ad.targetExePath, ".", LDD_AND_RPATH_FLAG)
 }
 
 func (ad *AppDeployer) addFixRPathTask(fullpath string) {
