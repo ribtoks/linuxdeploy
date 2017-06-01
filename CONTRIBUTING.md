@@ -1,9 +1,9 @@
 ## Basic architecture overview
 
 The whole deployment process consists of several pipelines: libraries inspection, files copying, RPATH patching, binaries stripping, special Qt libraries handling and others. 
-Each pipeline is represented by an appropriate `channel` which is being handled in it's own goroutine. Libraries and files are passed over from one pipeline to the other after being processed.
+Each pipeline is represented by an appropriate `channel` which is being handled in it's own goroutine. Libraries and files are passed over from one pipeline to the other after being processed (see details on chart below).
 
-`AppDeployer` is a top-level entity to orchestrate the whole deployment. It kicks-off the process by calling `processMainExe()` and starting processign of all other pipelines like `processCopyTasks()`, `processStripTasks()` and others.
+`AppDeployer` is a top-level entity to orchestrate the whole deployment. It kicks-off the process by calling `processMainExe()` and starting processing of all other pipelines like `processCopyTasks()`, `processStripTasks()` and others.
 
 Another important place is deploying all Qt dependencies. `QtDeployer` as a part of `AppDeployer` is responsible for this. It handles plugins, qml imports and libraries separately in the `processQtLibTasks()` and `deployQmlImports()`.
 Also `libQt5Core` needs to have hardcoded paths patched which is implemented in the `patchQtCore()` method. Qt environment is derived from the `qmake` output which is parsed in the beginning if Qt is in the dependencies or specified via `-qmake` param.
