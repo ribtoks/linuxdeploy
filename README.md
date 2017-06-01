@@ -81,7 +81,7 @@ Every binary deployed (original exe and dependent libs) can be stripped if you s
         
 # Known issues
 
-There's an issue with `libQt5Core.so.5` RPATH patching by `patchelf` in TravisCI environment but otherwise it's good to go.
+The only working `patchelf` right now was of version 0.8-2 from the Debian in TravisCI environment.
 
 # Disclaimer
 
