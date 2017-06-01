@@ -1,10 +1,12 @@
 # linuxdeploy
-A tool for creating standalone Linux applications
+A tool for deploying standalone Linux applications
 
 [![Build Status](https://travis-ci.org/Ribtoks/linuxdeploy.svg?branch=master)](https://travis-ci.org/Ribtoks/linuxdeploy)
 
 # Description
-**linuxdeploy** inspects the executable file and deploys it alongside with all the dependencies to a specified location. Afterwards RPATH is fixed correctly so deployed executable only uses deployed libraries. Main use-case for this tool is _deploying Qt applications on Linux without pain in the format of AppImage_, however your mileage may vary.
+**linuxdeploy** inspects the executable file and deploys it alongside with all the dependencies to a specified location. Afterwards RPATH is fixed correctly so the deployed executable only uses deployed libraries. Main use-case for this tool is _deploying Qt applications on Linux without pain in the format of AppImage_, however your mileage may vary.
+
+Find more info in the [CONTRIBUTING.md](https://github.com/Ribtoks/linuxdeploy/blob/master/CONTRIBUTING.md)
 
 # Build
 
@@ -25,22 +27,22 @@ You have to have in your `PATH`:
 
 ## Simple usage
 
-Most simple usage of this tool can be expressed with a following commands:
+Most simple usage of this tool:
 
     linuxdeploy -exe /path/to/myexe -appdir myexe.AppDir -icon /path/to/icon 
         -gen-desktop -default-blacklist -out appimage
         
     appimagetool --verbose -n myexe.AppDir "myexe.AppImage"
    
-These commands will deploy application `myexe` and it's dependencies to the directory `./myexe.AppDir/` packing in the AppImage-compatible structure. Afterwards AppImage is generated with a proper tool.
+These commands will deploy application `myexe` and it's dependencies to the directory `./myexe.AppDir/` packing in the AppImage-compatible structure. Afterwards AppImage is generated with an [AppImageTool](https://github.com/probonopd/AppImageKit).
 
 ## Deploying Qt
 
-**linuxdeploy** is capable of correctly deploying all Qt's dependencies alongside: libraries, private widgets, QML imports and translations. Optionally you can specify path to the `qmake` executable and **linuxdeploy** will parse Qt Environment from it. You can specify additional directories to search for qml impors using `-qmldir` switch.
+**linuxdeploy** is capable of deploying all Qt's dependencies: libraries, private widgets, QML imports and translations. Optionally you can specify path to the `qmake` executable and **linuxdeploy** will derive Qt Environment from it. You can specify additional directories to search for qml impors using `-qmldir` switch.
 
 ## Other features
 
-Usually when creating AppImage you don't need to deploy _all_ libraries (like _libstdc++_ or _libdbus_). **linuxdeploy** supports ignore list (called "blacklist") as a command-line parameter `-blacklist` as path to a file with a prefix per line to ignore (e.g. if you need to ignore _libstdc++.so.6_ you can have a line _libstdc++_ in the blacklist file). Also you have a default blacklist which can be checked out in the `src/blacklist.go` file.
+Usually when creating AppImage you don't need to deploy _all_ the libraries (like _libstdc++_ or _libdbus_). **linuxdeploy** supports ignore list as a command-line parameter `-blacklist`. It is path to a file with an ingore per line (e.g. if you need to ignore _libstdc++.so.6_ you can have a line _libstdc++_ in the blacklist file). Also you have a default blacklist which can be checked out in the `src/blacklist.go` file and can be added with `-default-blacklist` cmdline switch.
 
 **linuxdeploy** can generate a desktop file in the deployment directory. Also it will fill-in information about icon and AppRun link in case you're deploying AppImage.
 
@@ -76,9 +78,13 @@ Every binary deployed (original exe and dependent libs) can be stripped if you s
      	Log to stdout and to logfile
     -strip
      	Run strip on binaries
+        
+# Known issues
+
+There's an issue with `libQt5Core.so.5` RPATH patching by `patchelf` in TravisCI environment but otherwise it's good to go.
 
 # Disclaimer
 
-I wrote this tool because [linuxdeployqt](https://github.com/probonopd/linuxdeployqt/) was too buggy for me. Now this tool successfully deploys [more or less complex desktop Qt/Qml app](https://github.com/ribtoks/xpiks) and works a lot faster then the former. There could be some issues with `libQt5Core.so` patching in TravisCI environment, but everything seems to work just fine in a field.
+I wrote this tool because [linuxdeployqt](https://github.com/probonopd/linuxdeployqt/) was too buggy for me. Now this tool successfully deploys [more or less complex desktop Qt/Qml app](https://github.com/ribtoks/xpiks) and works a lot faster then the former.
 
-Pull Requests and feedback are more than welcome. Check out _CONTRIBUTING.md_ for more details and documentation on the internals.
+Pull Requests and feedback are more than welcome. Check out [CONTRIBUTING.md](https://github.com/Ribtoks/linuxdeploy/blob/master/CONTRIBUTING.md) for more details and documentation on the internals.
