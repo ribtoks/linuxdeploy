@@ -31,7 +31,7 @@ before_script:
   - export COMPILER=g++-5
   - if [ -n "$DEPLOY_TESTS" ]; then g++ --version; fi
   - ulimit -c unlimited -S       # enable core dumps
-  - if [ -n "$DEPLOY_TESTS" ]; then git clone -o 44b7f9583ffe0ee0 https://github.com/NixOS/patchelf.git; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then git clone -o 21a85cc1 https://github.com/NixOS/patchelf.git; fi
   - if [ -n "$DEPLOY_TESTS" ]; then cd patchelf; fi
   - if [ -n "$DEPLOY_TESTS" ]; then bash ./bootstrap.sh; fi
   - if [ -n "$DEPLOY_TESTS" ]; then ./configure; fi
