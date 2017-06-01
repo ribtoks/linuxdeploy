@@ -209,7 +209,7 @@ func (ad *AppDeployer) processQtLibTask(libraryPath string) {
     ad.copyRecursively(ad.qtDeployer.TranslationsPath(), "qtwebengine_locales", "translations")
   } else
   if strings.HasPrefix(libname, "libqt5core") {
-    go ad.patchQtCore(libraryPath)
+    ad.patchQtCore(libraryPath)
   }
 }
 
