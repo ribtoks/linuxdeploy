@@ -33,7 +33,7 @@ before_script:
   - ulimit -c unlimited -S       # enable core dumps
   - if [ -n "$DEPLOY_TESTS" ]; then cd vendors/patchelf; fi
   - if [ -n "$DEPLOY_TESTS" ]; then ./configure; fi
-  - if [ -n "$DEPLOY_TESTS" ]; then make -j2; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then make; fi
   - if [ -n "$DEPLOY_TESTS" ]; then sudo make install; fi
   - if [ -n "$DEPLOY_TESTS" ]; then cd ../../; fi
 
