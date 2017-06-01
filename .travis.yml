@@ -21,7 +21,7 @@ before_install:
 install:
   - if [ -n "$DEPLOY_TESTS" ]; then sudo apt-get -y install gcc-5 g++-5; fi
   - if [ -n "$DEPLOY_TESTS" ]; then sudo apt-get install -qq qt55base; source /opt/qt55/bin/qt55-env.sh; fi
-  - if [ -n "$DEPLOY_TESTS" ]; then sudo apt-get -y install binutils xpra; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then sudo apt-get -y install binutils xpra automake; fi
   - if [ -n "$DEPLOY_TESTS" ]; then sudo apt-get install -y gdb; fi
   - if [ -n "$DEPLOY_TESTS" ]; then sudo apt-get -y install qt55base qt55quickcontrols qt55svg qt55declarative; fi
   - if [ -n "$DEPLOY_TESTS" ]; then sudo unlink /usr/bin/g++ && sudo ln -s /usr/bin/g++-5 /usr/bin/g++; fi
