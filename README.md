@@ -44,7 +44,7 @@ Usually when creating AppImage you don't need to deploy _all_ libraries (like _l
 
 **linuxdeploy** can generate a desktop file in the deployment directory. Also it will fill-in information about icon and AppRun link in case you're deploying AppImage.
 
-Every binary deployed (original exe and dependent libs) can be stripped if you specify cmdline swith `-strip`.
+Every binary deployed (original exe and dependent libs) can be stripped if you specify cmdline switch `-strip`.
 
 ## Command line switches:
  
