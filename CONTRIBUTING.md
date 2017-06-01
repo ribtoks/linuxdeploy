@@ -10,6 +10,24 @@ Also `libQt5Core` needs to have hardcoded paths patched which is implemented in 
 
 AppImage format is supported in a way of creating `AppRun` link, `.DirIcon` file and correct `.desktop` file (icon path without extension, Exec command and others). This is all handled in the `AppDeployer` respective methods which are called after copying the main exe file.
 
+## Pipelines
+
+            +-------+     +--------+     +---------+     +---------+
+       -->  |  LDD  +---> |  Copy  +---> |  RPATH  +---> |  Strip  |
+            +---+---+     +---+----+     +----+----+     +---------+
+                ^             |               ^
+                |             |               |
+                |         +---v----+          |
+                +<--------+   Qt   +--------->+
+                          +---+----+
+                              |
+                              |
+                     +--------v--------+
+                     | Qt dependencies |
+                     +-----------------+
+
+So initially main exe is fed to [**LDD** pipeline] which extracts the dependencies (and dependencies of dependencies) and passes them to the [**Copy** pipeline]. The latter copies files from their origin to the deployment directory in proper manner (e.g. libs to `lib/` directory). Ordinary libraries are then passed to [**RPATH** pipeline] and Qt libraries [**Copy** pipeline] are passed to [**Qt** pipeline]. [**RPATH** pipeline] fixes `RPATH` for libs to be `$ORIGIN:$ORIGIN/path/to/libs` and passes files over to [**Strip** pipeline] if needed (if `-strip` was in the cmdline options). [**Qt** pipeline] inspects required [**Dependencies**] for each libraries (like Qml imports and Qt Translations) and passes new libraries back to the [**LDD** pipeline] and processed libraries to the [**RPATH** pipeline].
+
 ## How to contribute
 
 - [Fork](http://help.github.com/forking/) linuxdeploy repository on GitHub
