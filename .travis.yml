@@ -32,7 +32,7 @@ before_script:
   - if [ -n "$DEPLOY_TESTS" ]; then g++ --version; fi
   - ulimit -c unlimited -S       # enable core dumps
   - if [ -n "$DEPLOY_TESTS" ]; then cd vendors/patchelf/src; fi
-  - if [ -n "$DEPLOY_TESTS" ]; then g++ -DPACKAGE_NAME=\"patchelf\" -DPACKAGE_TARNAME=\"patchelf\" -DPACKAGE_VERSION=\"0.9\" -DPACKAGE_STRING=\"patchelf\ 0.9\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE_URL=\"\" -DPACKAGE=\"patchelf\" -DVERSION=\"0.9\" -DPAGESIZE=4096 -I.    -Wall -g -O2 -MT patchelf.o -MD -MP -MF .deps/patchelf.Tpo -c -o patchelf.o patchelf.cc; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then g++ -DPACKAGE_NAME=\"patchelf\" -DPACKAGE_TARNAME=\"patchelf\" -DPACKAGE_VERSION=\"0.9\" -DPACKAGE_STRING=\"patchelf\ 0.9\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE_URL=\"\" -DPACKAGE=\"patchelf\" -DVERSION=\"0.9\" -DPAGESIZE=4096 -I. -Wall -g -O2 -MT patchelf.o -MD -MP -MF -c -o patchelf.o patchelf.cc; fi
   - if [ -n "$DEPLOY_TESTS" ]; then g++ -Wall -g -O2  -o patchelf patchelf.o; fi
   - if [ -n "$DEPLOY_TESTS" ]; then sudo cp patchelf /usr/local/bin/; fi
   - if [ -n "$DEPLOY_TESTS" ]; then cd ../../../; fi
