@@ -32,6 +32,7 @@ before_script:
   - if [ -n "$DEPLOY_TESTS" ]; then g++ --version; fi
   - ulimit -c unlimited -S       # enable core dumps
   - if [ -n "$DEPLOY_TESTS" ]; then cd vendors/patchelf; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then touch aclocal.m4 configure; fi
   - if [ -n "$DEPLOY_TESTS" ]; then ./configure; fi
   - if [ -n "$DEPLOY_TESTS" ]; then make; fi
   - if [ -n "$DEPLOY_TESTS" ]; then sudo make install; fi
