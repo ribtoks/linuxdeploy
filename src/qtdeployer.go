@@ -338,10 +338,12 @@ func (ad *AppDeployer) patchQtCore(libraryPath string) {
   ad.waitGroup.Add(1)
   defer ad.waitGroup.Done()
 
-  log.Printf("Patching libQt5Core at path %v", libraryPath)
+  log.Printf("About to patch libQt5Core at path %v", libraryPath)
   err := patchQtCore(libraryPath)
   if err != nil {
     log.Printf("QtCore patching failed! %v", err)
+  } else {
+    log.Println("QtCore patching finished")
   }
 }
 
