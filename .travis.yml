@@ -30,14 +30,9 @@ install:
 before_script:
   - export COMPILER=g++-5
   - if [ -n "$DEPLOY_TESTS" ]; then g++ --version; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then wget http://ftp.de.debian.org/debian/pool/main/p/patchelf/patchelf_0.8-2_amd64.deb; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then sudo dpkg -i patchelf_0.8-2_amd64.deb; fi
   - ulimit -c unlimited -S       # enable core dumps
-  - if [ -n "$DEPLOY_TESTS" ]; then git clone -o 44b7f9583ffe0ee0 https://github.com/NixOS/patchelf.git; fi
-  - if [ -n "$DEPLOY_TESTS" ]; then cd patchelf; fi
-  - if [ -n "$DEPLOY_TESTS" ]; then bash ./bootstrap.sh; fi
-  - if [ -n "$DEPLOY_TESTS" ]; then ./configure; fi
-  - if [ -n "$DEPLOY_TESTS" ]; then make -j2; fi
-  - if [ -n "$DEPLOY_TESTS" ]; then sudo make install; fi
-  - if [ -n "$DEPLOY_TESTS" ]; then cd ../; fi
 
 script:
   - if [ -n "$DEPLOY_TESTS" ]; then xpra start :42; fi # start the display to have it ready before needed
