@@ -237,7 +237,7 @@ func (ad *AppDeployer) addCopyQtDepTask(sourceRoot, sourcePath, targetPath strin
 
 func (ad *AppDeployer) addQtPluginTask(relpath string) {
   log.Printf("Deploying additional Qt plugin: %v", relpath)
-  ad.addLibTask(ad.qtDeployer.PluginsPath(), relpath, "plugins", FIX_RPATH_FLAG)
+  ad.addLibTask(ad.qtDeployer.PluginsPath(), relpath, "plugins", LDD_AND_RPATH_FLAG)
 }
 
 func (ad *AppDeployer) deployQmlImports() error {
