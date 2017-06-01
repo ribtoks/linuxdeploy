@@ -1,0 +1,24 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+%:
+	dh $@  --with autoreconf
+
+override_dh_auto_build: src/elf.h.bak
+	dh_auto_build
+
+override_dh_auto_clean: src/elf.h
+	[ ! -f Makefile ] || $(MAKE) maintainer-clean
+	rm -rf build-aux
+	find . -name Makefile.in -delete
+	rm -f configure
+	rm -f aclocal.m4
+
+src/elf.h.bak:
+	mv src/elf.h src/elf.h.bak
+
+src/elf.h:
+	mv src/elf.h.bak src/elf.h

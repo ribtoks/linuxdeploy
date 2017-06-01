@@ -1,0 +1,37 @@
+patchelf (0.9-1) unstable; urgency=medium
+
+  * New upstream release
+    - Drop all patches, applied upstream
+    - No longer breaks hardlinks (Closes: #759497)
+  * Force pagesize for no-rpath-prebuild test: We know the page size,
+    and it may be different from system one
+
+ -- Felipe Sateler <fsateler@debian.org>  Mon, 29 Feb 2016 17:32:24 -0300
+
+patchelf (0.8-4) unstable; urgency=medium
+
+  * Disable no-rpath.sh test, as it may fail when the binary is of foreign
+    architecture. Really Closes: #799880
+
+ -- Felipe Sateler <fsateler@debian.org>  Sun, 15 Nov 2015 16:05:13 -0300
+
+patchelf (0.8-3) unstable; urgency=medium
+
+  * Pick upstream commit to use a dynamic page size. Fixes FTBFS on ppc64el.
+    Closes: #799880
+
+ -- Felipe Sateler <fsateler@debian.org>  Thu, 12 Nov 2015 20:29:11 -0300
+
+patchelf (0.8-2) unstable; urgency=medium
+
+  * Document --remove-needed in manpage
+  * Fix typo in manpage. Closes: #742468
+     Thanks Gianluigi Tiesi
+
+ -- Felipe Sateler <fsateler@debian.org>  Fri, 28 Mar 2014 15:28:41 -0300
+
+patchelf (0.8-1) unstable; urgency=low
+
+  * Initial release (Closes: #742049)
+
+ -- Felipe Sateler <fsateler@debian.org>  Tue, 18 Mar 2014 12:57:47 -0300

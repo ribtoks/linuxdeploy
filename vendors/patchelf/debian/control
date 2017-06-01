@@ -1,0 +1,21 @@
+Source: patchelf
+Section: utils
+Priority: optional
+Maintainer: Felipe Sateler <fsateler@debian.org>
+Build-Depends: debhelper (>= 9.0.0), dh-autoreconf
+Standards-Version: 3.9.7
+Homepage: http://nixos.org/patchelf.html
+Vcs-Git: git://anonscm.debian.org/collab-maint/patchelf.git
+Vcs-Browser: http://anonscm.debian.org/gitweb/?p=collab-maint/patchelf.git;a=summary
+
+Package: patchelf
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: modify properties of ELF executables
+ PatchELF is a simple utility for modifying existing ELF executables and
+ libraries.  In particular, it can do the following:
+ .
+  * Change the dynamic loader ("ELF interpreter") of executables
+  * Change the RPATH of executables and libraries
+  * Remove declared dependencies on dynamic libraries
+    (DT_NEEDED entries)
