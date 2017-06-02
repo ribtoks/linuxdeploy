@@ -4,7 +4,7 @@ pushd src
 
 APP_DIR=TestApp.AppDir1
 
-./linuxdeploy -exe ../tests/TestApp/TestApp -appdir $APP_DIR -overwrite -libs ../tests/TestLib/ -qmldir ../tests/TestApp/ -log linuxdeploy.log
+./linuxdeploy -exe ../tests/TestApp/TestApp -appdir $APP_DIR -strip -overwrite -libs ../tests/TestLib/ -qmldir ../tests/TestApp/ -log linuxdeploy.log
 
 rc=$?; if [[ $rc != 0 ]]; then exit 1; fi
 
