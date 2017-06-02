@@ -42,7 +42,7 @@ These commands will deploy application `myexe` and it's dependencies to the dire
 
 ## Other features
 
-Usually when creating AppImage you don't need to deploy _all_ the libraries (like _libstdc++_ or _libdbus_). **linuxdeploy** supports ignore list as a command-line parameter `-blacklist`. It is path to a file with an ingore per line where ignore is a prefix of the library to skip (e.g. if you need to ignore _libstdc++.so.6_ you can have a line _libstdc++_ in the blacklist file). Also you have a default blacklist which can be checked out in the `src/blacklist.go` file and can be added with `-default-blacklist` cmdline switch.
+Usually when creating AppImage you don't need to deploy _all_ the libraries (like _libstdc++_ or _libdbus_). **linuxdeploy** supports ignore list as a command-line parameter `-blacklist`. It is path to a file with an ignore per line where ignore is a prefix of the library to skip (e.g. if you need to ignore _libstdc++.so.6_ you can have a line _libstdc++_ in the blacklist file). Also you have a default blacklist which can be checked out in the `src/blacklist.go` file and can be added with `-default-blacklist` cmdline switch.
 
 **linuxdeploy** can also generate a desktop file in the deployment directory. Also it will fill-in information about icon and AppRun link in case you're deploying AppImage.
 
