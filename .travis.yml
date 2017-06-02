@@ -40,7 +40,7 @@ before_script:
   - if [ -n "$DEPLOY_TESTS" ]; then cd vendors/patchelf; fi
   - if [ -n "$DEPLOY_TESTS" ]; then ./configure; fi
   - if [ -n "$DEPLOY_TESTS" ]; then make; fi
-  - if [ -n "$DEPLOY_TESTS" ]; then sudo cp patchelf /usr/local/bin/; fi
+  - if [ -n "$DEPLOY_TESTS" ]; then sudo make install; fi
   - if [ -n "$DEPLOY_TESTS" ]; then cd ../../; fi
 
 script:
