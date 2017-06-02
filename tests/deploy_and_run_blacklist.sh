@@ -4,7 +4,7 @@ pushd src
 
 APP_DIR=TestApp.AppDir2
 
-./linuxdeploy -exe ../tests/TestApp/TestApp -default-blacklist -appdir $APP_DIR -overwrite -libs ../tests/TestLib/ -qmldir ../tests/TestApp/ -log linuxdeploy_blacklist.log
+./linuxdeploy -exe ../tests/TestApp/TestApp -default-blacklist -strip -appdir $APP_DIR -overwrite -libs ../tests/TestLib/ -qmldir ../tests/TestApp/ -log linuxdeploy_blacklist.log
 
 rc=$?; if [[ $rc != 0 ]]; then exit 1; fi
 
