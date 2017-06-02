@@ -278,7 +278,9 @@ func (ad *AppDeployer) processStripTasks() {
   for fullpath := range ad.stripChannel {
     if stripAvailable {
       if _, ok := strippedBinaries[fullpath]; !ok {
-        stripBinary(fullpath)
+        if err := stripBinary(fullpath); err == nil {
+          strippedBinaries[fullpath] = true
+        }
       } else {
         log.Printf("%v has been already stripped", fullpath)
       }
@@ -290,13 +292,15 @@ func (ad *AppDeployer) processStripTasks() {
   log.Printf("Strip requests processing finished")
 }
 
-func stripBinary(fullpath string) {
+func stripBinary(fullpath string) error {
   log.Printf("Running strip on %v", fullpath)
 
-  out, err := exec.Command("strip", "--strip-debug", "-v", fullpath).Output()
+  out, err := exec.Command("strip", "--strip-debug", "--verbose", fullpath).CombinedOutput()
   if err != nil {
     log.Printf("Error while stripping %v: %v", fullpath, out)
   } else {
     log.Printf("Stripped %v: %v", fullpath, out);
   }
+  
+  return err
 }
