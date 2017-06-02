@@ -293,8 +293,8 @@ func (ad *AppDeployer) processStripTasks() {
 func stripBinary(fullpath string) {
   log.Printf("Running strip on %v", fullpath)
 
-  cmd := exec.Command("strip", fullpath)
-  if err := cmd.Run(); err != nil {
-    log.Println(err)
+  out, err := exec.Command("strip", fullpath).Output()
+  if err != nil {
+    log.Printf("Error while stripping %v: %v", fullpath, out)
   }
 }
