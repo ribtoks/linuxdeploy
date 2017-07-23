@@ -73,7 +73,7 @@ Every binary deployed (original exe and dependent libs) can be stripped if you s
     -out string
      	Type of the generated output (default "appimage")
     -overwrite
-     	Overwrite output if preset
+     	Overwrite output if present
     -stdout
      	Log to stdout and to logfile
     -strip
