@@ -301,6 +301,6 @@ func stripBinary(fullpath string) error {
   } else {
     log.Printf("Stripped %v: %v", fullpath, out);
   }
-  
+
   return err
 }

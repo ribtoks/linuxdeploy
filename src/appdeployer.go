@@ -248,10 +248,10 @@ func (ad *AppDeployer) generateDesktopFile() {
     return
   }
 
-	writer := bufio.NewWriter(desktopFile)
-	defer desktopFile.Close()
+  writer := bufio.NewWriter(desktopFile)
+  defer desktopFile.Close()
 
-	fmt.Fprintln(writer, "[Desktop Entry]")
+  fmt.Fprintln(writer, "[Desktop Entry]")
   fmt.Fprintln(writer, "Type=Application")
   fmt.Fprintf(writer, "Name=%s\n", exeFilename)
 
