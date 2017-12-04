@@ -1,7 +1,7 @@
 # linuxdeploy
 A tool for deploying standalone Linux applications
 
-[![Build Status](https://travis-ci.org/Ribtoks/linuxdeploy.svg?branch=master)](https://travis-ci.org/Ribtoks/linuxdeploy)
+[![Build Status](https://travis-ci.org/ribtoks/linuxdeploy.svg?branch=master)](https://travis-ci.org/ribtoks/linuxdeploy)
 
 # Description
 **linuxdeploy** inspects the executable file and deploys it alongside with all the dependencies to a specified location. Afterwards RPATH is fixed correctly so the deployed executable only uses deployed libraries. Main use-case for this tool is _deploying Qt applications on Linux without pain in the format of AppImage_, however your mileage may vary.
