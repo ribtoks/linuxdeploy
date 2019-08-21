@@ -75,7 +75,7 @@ func main() {
   }
 
   logfile, err := setupLogging()
-  if err != nil {
+  if err == nil {
     defer logfile.Close()
   }
 
